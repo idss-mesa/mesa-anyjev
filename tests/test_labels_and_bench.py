@@ -25,7 +25,9 @@ from mesa_anyjev.questions import QUESTIONS
 ROOT = Path(__file__).resolve().parent
 FIXTURES = ROOT / "fixtures" / "ols"
 EVAL_ROOT = Path(
-    os.environ.get("MESA_ANYJEV_EVAL_ROOT", "/home/tswetnam/github/idss-mesa/neon-avu-eval")
+    os.environ.get(
+        "MESA_ANYJEV_EVAL_ROOT", str(Path(__file__).resolve().parent / "fixtures" / "neon-avu-eval")
+    )
 )
 
 pytestmark = pytest.mark.skipif(

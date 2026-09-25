@@ -28,7 +28,9 @@ from mesa_anyjev.questions import Q_COLUMN_ONTOLOGY, Q_TERM_FITS, QUESTIONS, loc
 ROOT = Path(__file__).resolve().parent
 FIXTURES = ROOT / "fixtures" / "ols"
 EVAL_ROOT = Path(
-    os.environ.get("MESA_ANYJEV_EVAL_ROOT", "/home/tswetnam/github/idss-mesa/neon-avu-eval")
+    os.environ.get(
+        "MESA_ANYJEV_EVAL_ROOT", str(Path(__file__).resolve().parent / "fixtures" / "neon-avu-eval")
+    )
 )
 HAVE_LABELS = (EVAL_ROOT / "results" / "validated.json").exists() and any(FIXTURES.glob("*.json"))
 

@@ -24,7 +24,7 @@ def test_learn_bench_artifacts_verbs(tmp_path: Path) -> None:
     from pathlib import Path as _P
 
     root = _P(__file__).resolve().parent
-    eval_root = _P("/home/tswetnam/github/idss-mesa/neon-avu-eval")
+    eval_root = _P(str(Path(__file__).resolve().parent / "fixtures" / "neon-avu-eval"))
     if not (eval_root / "results" / "validated.json").exists() or not any(
         (root / "fixtures" / "ols").glob("*.json")
     ):
