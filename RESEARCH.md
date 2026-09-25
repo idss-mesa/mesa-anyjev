@@ -33,6 +33,23 @@ Every fact names where it was verified. Re-check anything marked `stale_after`.
   every ontology (mean 0.98) so the twin is not discriminative before calibration; 4 of 124
   prefills had a label outside the top-20 and their batches were capped at abstain (D11).
   Numbers from the run's sidecar rows, not a bench file; the bench arrives in M2.
+- First L1 fit through the gateway (2026-09-25, `term.fits`, carc-fast, 285 labelled states
+  from the neon-avu-eval silver at min_weight 0.5: 86 consensus positives, 199 single-model
+  negatives; leave-one-card-out over 7 cards, no fold skipped): pooled held-out accuracy
+  0.618, ECE 0.231, Brier 0.459, NLL 0.650, coverage at 5% risk 0.077, at 10% risk 0.140;
+  every fold froze its prior. Per fold accuracy 0.52 to 0.64 and cov@5% 0.02 to 0.18.
+  Source: the promoted bundle's manifest, `~/.mesa/anyjev/artifacts/RedHatAI__Qwen3-8B-NVFP4/
+  0190586d/v1/manifest.json` (local; bundles are release assets, not git). Against the
+  pre-registered criteria (DESIGN.md § Plan): coverage exists but ECE misses the 0.10 bar, so
+  every `auto` threshold stays null (proposed-only). Read as agreement with the four agentic
+  models, not correctness.
+- First gateway bench (2026-09-25, `bench/results/2026-09-25/RedHatAI__Qwen3-8B-NVFP4.gateway.json`,
+  carc-fast, raw/L0/L1 with leave-one-card-out): `term.fits` acc 0.502 / 0.611 / 0.621, ECE
+  0.372 / 0.262 / 0.072, cov@5% 0.004 / 0.007 / 0.007 (n 285, n_neg 199); `column.aspect`
+  (K=8) lost 19 labels to the top-20 readout at L0 (7 at raw); the choice26 control at L0
+  scored 0.205 on 44 items; `avu.keep` fits nothing (11 negatives). The bench's adaptive-shift
+  L1 and `learn fit`'s full-cycle L1 disagree on ECE (0.072 vs 0.231) on the same labels; one
+  fitting path is an M3 task. Thresholds stay proposed-only.
 - Any gateway change (`--max-logprobs`, a pooling instance of the decision model, a
   text-completion alias, direct vLLM ports) is a request to `tredfear`.
 

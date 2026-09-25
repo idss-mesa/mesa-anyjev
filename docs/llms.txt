@@ -15,6 +15,18 @@ For the decisions and verified facts behind the design, read DESIGN.md and RESEA
 - [Install](https://idss-mesa.github.io/mesa-anyjev/getting-started/install/): Install mesa-anyjev with uv, choose the extras for the gateway, local weights, Claude or Postgres, and run the doctor. (draft)
 - [Quickstart](https://idss-mesa.github.io/mesa-anyjev/getting-started/quickstart/): Annotate one dataset card end to end with the fake backend, apply the proposals to a local DuckLake, and read the provenance back. (draft)
 
+## Concepts
+
+- [Decision graph](https://idss-mesa.github.io/mesa-anyjev/concepts/decision-graph/): The fixed-key questions mesa-anyjev asks from a dataset card to a written AVU, which provider answers each, and what happens below threshold. (draft)
+- [Hosted providers](https://idss-mesa.github.io/mesa-anyjev/concepts/hosted-providers/): Hosted Jev through MotherDuck prompt_jev as a third provider for the same questions, and the data-residency switch that keeps it off by default. (draft)
+- [Learning](https://idss-mesa.github.io/mesa-anyjev/concepts/learning/): Where labels come from, how L1 temperatures are fitted with leave-one-card-out, the guards against positives-only data, and how an artifact is promoted. (draft)
+- [Levels and policy](https://idss-mesa.github.io/mesa-anyjev/concepts/levels-and-policy/): What an AnyJev level and the calibration field promise, and the rules that turn a decision into auto, proposed, human or abstain. (draft)
+- [Provenance](https://idss-mesa.github.io/mesa-anyjev/concepts/provenance/): The mesa-anyjev sidecar: runs, decisions, options, groups, AVU links, human overrides and labels, and how it joins the mesa-ducklake AVU history. (draft)
+
+## Bench
+
+- [Bench results](https://idss-mesa.github.io/mesa-anyjev/bench/results/): Measured raw, L0 and L1 numbers per question on the CARC gateway and the synthetic backend, every cell naming its results JSON. (draft)
+
 ## Develop
 
 - [Architecture](https://idss-mesa.github.io/mesa-anyjev/develop/architecture/): The mesa-anyjev modules, the annotate and apply phases, and the boundaries with AnyJev, mesa-mcp and mesa-ducklake. (draft)

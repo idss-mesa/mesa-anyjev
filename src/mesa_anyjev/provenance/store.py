@@ -159,13 +159,18 @@ def _row_values(row: Any) -> tuple[list[str], list[Any]]:
 class DuckDBStore:
     """A single-writer DuckDB file (development, tests, the GB10 bench host)."""
 
-    def __init__(self, path: str | Path) -> None:
+    def __init__(self, path: str | Path, *, read_only: bool = False) -> None:
         self.path = Path(path).expanduser()
-        self.path.parent.mkdir(parents=True, exist_ok=True)
-        self._con = duckdb.connect(str(self.path))
+        self.read_only = read_only
+        if not read_only:
+            self.path.parent.mkdir(parents=True, exist_ok=True)
+        # A DuckDB file has one writer; readers may share it only when no writer holds it.
+        self._con = duckdb.connect(str(self.path), read_only=read_only)
 
     # -- schema ------------------------------------------------------------------------------
     def ensure_schema(self) -> int:
+        if self.read_only:
+            return SCHEMA_VERSION
         for stmt in DUCKDB_DDL:
             self._con.execute(stmt)
         self._con.execute(
@@ -373,15 +378,16 @@ class DuckDBStore:
 _DUCKDB_RE = re.compile(r"^duckdb:///(.+)$")
 
 
-def open_store(dsn: str) -> ProvenanceStore:
+def open_store(dsn: str, *, read_only: bool = False) -> ProvenanceStore:
     """Dispatch on the DSN scheme: ``duckdb:///path`` or ``*.duckdb`` -> :class:`DuckDBStore`;
-    ``postgresql://`` -> the Postgres store (``pg`` extra, M4)."""
+    ``postgresql://`` -> the Postgres store (``pg`` extra, M4). ``read_only`` lets a reader
+    (the bench) open a DuckDB file no writer holds."""
     if not dsn or not dsn.strip():
         raise ValueError("provenance DSN is empty")
     if m := _DUCKDB_RE.match(dsn):
-        store = DuckDBStore(m.group(1))
+        store = DuckDBStore(m.group(1), read_only=read_only)
     elif dsn.endswith(".duckdb"):
-        store = DuckDBStore(dsn)
+        store = DuckDBStore(dsn, read_only=read_only)
     elif dsn.startswith(("postgresql://", "postgres://")):
         from mesa_anyjev.provenance.store_postgres import PostgresStore  # lazy: psycopg optional
 

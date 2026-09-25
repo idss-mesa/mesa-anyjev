@@ -27,5 +27,6 @@ knowledge bundle; the corpus is available to agents at [`llms.txt`](llms.txt) an
 
 * [Getting started](getting-started/index.md) - Install mesa-anyjev, reach the CARC gateway and configure it.
 * [Concepts](concepts/index.md) - The decision graph, calibration levels and the write policy, provenance, hosted providers.
+* [Bench](bench/index.md) - Measured numbers per question and level, every cell naming its results JSON.
 * [Develop](develop/index.md) - Architecture and the hermetic test suite.
 * [About](about/index.md) - How agents should consume this site, licenses, and the change log.

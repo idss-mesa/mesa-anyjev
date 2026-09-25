@@ -28,7 +28,7 @@ import yaml
 ROOT = Path(__file__).resolve().parent.parent
 DOCS = ROOT / "docs"
 
-SECTION_ORDER = ["getting-started", "tools", "mcp", "deploy", "develop", "about"]
+SECTION_ORDER = ["getting-started", "concepts", "bench", "develop", "about"]
 
 
 def site_url() -> str:
