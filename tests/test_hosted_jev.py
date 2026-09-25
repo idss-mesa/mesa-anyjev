@@ -245,3 +245,95 @@ def test_cli_refuses_hosted_when_off(tmp_path: Path) -> None:
         assert main(["hosted", "score", "--provenance", dsn, "--dry-run"]) == 0
     finally:
         del os.environ["MESA_ANYJEV_POLICY__HOSTED_PROVIDERS"]
+
+
+class _StubCon:
+    """Enough of a DuckDB connection for MotherDuckRunner: records SQL, answers per row."""
+
+    def __init__(self, answers: list[Any]) -> None:
+        self.sql: list[str] = []
+        self.rows: list[list[Any]] = []
+        self.answers = answers
+        self.closed = False
+
+    def execute(self, sql: str, params: Any = None) -> _StubCon:
+        self.sql.append(sql)
+        return self
+
+    def executemany(self, sql: str, rows: list[list[Any]]) -> None:
+        self.sql.append(sql)
+        self.rows = rows
+
+    def fetchall(self) -> list[tuple[int, Any]]:
+        return [(i, a) for i, a in enumerate(self.answers)]
+
+    def fetchone(self) -> tuple[str]:
+        return ("md-stub",)
+
+    def close(self) -> None:
+        self.closed = True
+
+
+def test_motherduck_runner_sends_the_pinned_sql_over_a_connection(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from mesa_anyjev.providers.motherduck_provider import MotherDuckRunner
+
+    cfg = load_config(env={})
+    con = _StubCon([0.9, None])
+    runner = MotherDuckRunner(cfg.motherduck, connect=lambda: con)
+    out = runner.score(["State:\na", "State:\nb"], Q_TERM_FITS)
+    assert out == [0.9, None] and runner.requests == 1
+    assert con.rows == [[0, "State:\na"], [1, "State:\nb"]]
+    assert any(sql_for(Q_TERM_FITS) in s for s in con.sql)
+    runner.close()
+    assert con.closed
+    # the default connection refuses to start without the token (never logs it)
+    monkeypatch.delenv("MOTHERDUCK_TOKEN", raising=False)
+    with pytest.raises(RuntimeError, match="MOTHERDUCK_TOKEN"):
+        MotherDuckRunner(cfg.motherduck).con  # noqa: B018
+
+
+def test_doctor_motherduck_checks(monkeypatch: pytest.MonkeyPatch) -> None:
+    from mesa_anyjev import health
+    from mesa_anyjev.providers import motherduck_provider as mp
+
+    cfg = load_config(env={"MESA_ANYJEV_POLICY__HOSTED_PROVIDERS": "allowlist"})
+    # 1. no token: the extension check passes and the report stops at the token
+    monkeypatch.delenv("MOTHERDUCK_TOKEN", raising=False)
+    rep = health.doctor(cfg)
+    names = [c.name for c in rep.checks]
+    assert "motherduck extension" in names and "motherduck token" in names
+    assert not next(c for c in rep.checks if c.name == "motherduck token").ok
+    # 2. token present, a stub server that answers the two fixtures with the pinned shapes
+    monkeypatch.setenv("MOTHERDUCK_TOKEN", "not-a-real-token")
+    answers = iter(
+        [
+            [0.7],
+            [
+                {
+                    "choice": "blue",
+                    "probabilities": [
+                        {"value": "blue", "probability": 0.9},
+                        {"value": "green", "probability": 0.1},
+                    ],
+                    "confidence": 0.9,
+                }
+            ],
+        ]
+    )
+
+    class _Runner(mp.MotherDuckRunner):
+        def __init__(self, cfg: Any) -> None:
+            super().__init__(cfg, connect=lambda: _StubCon([]))
+
+        def score(self, texts: list[str], question: Question) -> list[Any]:
+            return list(next(answers))
+
+    monkeypatch.setattr(health, "_motherduck_checks", health._motherduck_checks)
+    monkeypatch.setattr(mp, "MotherDuckRunner", _Runner)
+    rep = health.doctor(cfg)
+    by = {c.name: c for c in rep.checks}
+    assert by["motherduck token"].ok and by["motherduck attach"].ok
+    assert by["prompt_jev noul"].ok and by["prompt_jev choice"].ok, by["prompt_jev choice"].detail
+    assert "answer='blue'" in by["prompt_jev choice"].detail
