@@ -211,6 +211,352 @@ its level and its snapshot id.
 
 To decide with a real model, see [Gateway](gateway.md).
 
+---8<--- https://idss-mesa.github.io/mesa-anyjev/concepts/decision-graph/
+
+---
+title: "Decision graph"
+description: "The fixed-key questions mesa-anyjev asks from a dataset card to a written AVU, which provider answers each, and what happens below threshold."
+type: Guide
+tags:
+  - concepts
+  - decisions
+  - questions
+generated:
+  by: "claude/fable-5.1"
+  at: "2026-09-25T00:00:00Z"
+sources:
+  - id: design
+    resource: "https://github.com/idss-mesa/mesa-anyjev/blob/main/DESIGN.md"
+    title: "mesa-anyjev decisions register (DESIGN.md)"
+    author: "team:idss-mesa"
+  - id: research
+    resource: "https://github.com/idss-mesa/mesa-anyjev/blob/main/RESEARCH.md"
+    title: "mesa-anyjev verified facts (RESEARCH.md)"
+    author: "team:idss-mesa"
+status: draft
+---
+
+# Decision graph
+
+Every question is fixed-key (DESIGN D1): its wording and option list are frozen in
+`questions.py` and pinned in `questions.lock.json`; the variable content (the column, the
+site, the candidate term, the sibling AVUs) lives in the *state*. That is what lets one
+question accumulate a batch prior, an L1 temperature and an L2 head across every column and
+dataset. Open candidate sets are asked as one yes/no per candidate under one key and ranked by
+`p_true`, which also removes AnyJev's 26-option cap.
+
+| Step | Question | Kind | Decides |
+|---|---|---|---|
+| Plan | (the reasoning model) | planner | which ontologies are in play, which columns to annotate, what to search; hints only |
+| Q1 | `column.annotate` | noul | should this column be annotated at all (identifiers are a rule, never a model call) |
+| Q2 | `column.aspect` | choice, K=8 | taxon, environment, method, measurement, unit, data_type, location, other |
+| Q3 | `column.ontology` / `column.ontology_fits` | choice K=12, or its noul twin on the gateway | which registry ontology to search; masked by aspect and plan |
+| S | candidates | code | OLS search, prefix filter, dedup, cap |
+| Q4 | `term.fits` | noul per candidate | is this candidate the right term at the right specificity (one key for column, site, unit and taxon scopes) |
+| Q7 | `avu.value_kind` | choice, K=4 | term label, site code, column name, or top data value (after deterministic pre-rules) |
+| Q8 | `avu.keep` | noul | keep this AVU given its siblings |
+| H | human pick | MRTR | the curator's choice is authoritative and becomes a label |
+| W | write | code | one DuckLake snapshot per run and path |
+
+The registry, the aspects and the value kinds are in `mesa_anyjev.registry`; the ontology
+registry is the ten ontologies allowed by the neon-avu-eval prompt plus TAXRANK and GENEPIO
+(every prefix with at least five valid evaluation AVUs, DESIGN D7).
+
+---8<--- https://idss-mesa.github.io/mesa-anyjev/concepts/hosted-providers/
+
+---
+title: "Hosted providers"
+description: "Hosted Jev through MotherDuck prompt_jev as a third provider for the same questions, and the data-residency switch that keeps it off by default."
+type: Guide
+tags:
+  - concepts
+  - motherduck
+  - hosted
+generated:
+  by: "claude/fable-5.1"
+  at: "2026-09-25T00:00:00Z"
+sources:
+  - id: design
+    resource: "https://github.com/idss-mesa/mesa-anyjev/blob/main/DESIGN.md"
+    title: "mesa-anyjev decisions register (DESIGN.md)"
+    author: "team:idss-mesa"
+  - id: research
+    resource: "https://github.com/idss-mesa/mesa-anyjev/blob/main/RESEARCH.md"
+    title: "mesa-anyjev verified facts (RESEARCH.md)"
+    author: "team:idss-mesa"
+status: draft
+---
+
+# Hosted providers
+
+MotherDuck's `prompt_jev` SQL function answers the same three primitives (choice, score,
+yes/no) and returns a choice, a full probability distribution and a confidence (DESIGN D16).
+mesa-anyjev can ask it the identical questions, using the frozen wording and option lists as
+SQL constants, and record the answers with `level='none'` and `calibration='typesafe'`.
+
+Because the state leaves the host, hosted providers are off by default
+(`policy.hosted_providers: off`). With `allowlist`, a project must carry
+`mesa.hosted_inference=allow` on its root or be listed in `hosted_allow_project_roots`;
+runs record `data_left_host`. Hosted decisions may be proposed but never auto-write until a
+bench row with its own results file cites their coverage at 5% risk. This provider ships in
+milestone M4b.
+
+---8<--- https://idss-mesa.github.io/mesa-anyjev/concepts/learning/
+
+---
+title: "Learning"
+description: "Where labels come from, how L1 temperatures are fitted with leave-one-card-out, the guards against positives-only data, and how an artifact is promoted."
+type: Guide
+tags:
+  - concepts
+  - learning
+  - calibration
+  - labels
+generated:
+  by: "claude/fable-5.1"
+  at: "2026-09-25T00:00:00Z"
+sources:
+  - id: design
+    resource: "https://github.com/idss-mesa/mesa-anyjev/blob/main/DESIGN.md"
+    title: "mesa-anyjev decisions register (DESIGN.md)"
+    author: "team:idss-mesa"
+  - id: research
+    resource: "https://github.com/idss-mesa/mesa-anyjev/blob/main/RESEARCH.md"
+    title: "mesa-anyjev verified facts (RESEARCH.md)"
+    author: "team:idss-mesa"
+status: draft
+---
+
+# Learning
+
+Labels are option indices per `(question_key, state)` in the sidecar's `labels` table, each
+with a source and a weight; when a state has several, the highest weight wins (DESIGN D6):
+
+| Source | Weight | Where it comes from |
+|---|---|---|
+| `curator` | 1.0 | an explicit pick or "none of these" in the term picker (M4) |
+| `curator_implicit` | 0.7 | the other candidates offered next to a pick |
+| `accepted_avu` | 0.8 | an auto-written AVU later deleted through mesa-mcp |
+| `consensus_all`, `consensus_majority` | 0.8, 0.6 | a term proposed by every, or by at least two, of the four agentic models in neon-avu-eval |
+| `consensus_negative` | 0.5 | a term proposed by a single model, or an ontology no model used for a column |
+| `teacher`, `hosted_jev` | 0.5 | allowed in the schema; not produced in 0.1.0 |
+| `gold` | 1.0 | hand-verified rows |
+
+`mesa-anyjev learn ingest --eval-root <neon-avu-eval>` writes the silver from the
+evaluation: `term.fits` states for every unique (card, CURIE) pair with the candidate's OLS
+record in the state, `column.annotate`, `column.aspect`, `column.ontology` and its yes/no
+twin, `avu.value_kind` and `avu.keep`. The silver is *agreement between models*, not truth,
+and it is circular with the agentic baselines the bench compares against.
+
+## Fitting
+
+`mesa-anyjev learn fit --question term.fits --level L1` fits a temperature on the L0
+probabilities. Two guards come from the plan's critique: the per-question `min_weight` in
+`policy_defaults.yaml` lets the single-model negatives in (at the default 0.6 the term labels
+are positives-only, which would make temperature scaling degenerate and coverage trivially
+100%), and every leave-one-card-out fold needs at least 30 labels per class in training and
+5 in the held-out card, else it is skipped and reported. Fitting runs on a Decider without
+adaptive shifts so the artifact freezes the prior it was fitted with.
+
+The fit is saved as a new immutable artifact version whose manifest carries the pooled
+held-out numbers; `learn promote --version N` moves `CURRENT` only when held-out accuracy and
+ECE do not regress against the current version (D15). Serving processes never fit.
+
+---8<--- https://idss-mesa.github.io/mesa-anyjev/concepts/levels-and-policy/
+
+---
+title: "Levels and policy"
+description: "What an AnyJev level and the calibration field promise, and the rules that turn a decision into auto, proposed, human or abstain."
+type: Guide
+tags:
+  - concepts
+  - calibration
+  - policy
+generated:
+  by: "claude/fable-5.1"
+  at: "2026-09-25T00:00:00Z"
+sources:
+  - id: design
+    resource: "https://github.com/idss-mesa/mesa-anyjev/blob/main/DESIGN.md"
+    title: "mesa-anyjev decisions register (DESIGN.md)"
+    author: "team:idss-mesa"
+  - id: research
+    resource: "https://github.com/idss-mesa/mesa-anyjev/blob/main/RESEARCH.md"
+    title: "mesa-anyjev verified facts (RESEARCH.md)"
+    author: "team:idss-mesa"
+status: draft
+---
+
+# Levels and policy
+
+Every stored decision carries two fields (DESIGN D3):
+
+* `level`: AnyJev's level (`raw`, `L0` zero-label debiasing, `L1` temperature on labels,
+  `L2` closed-form head on hidden states) or `none` for anything that is not an AnyJev
+  decision: a rule, a planner hint, a Claude structured answer, a hosted Jev answer.
+* `calibration`: where the probabilities come from: `anyjev`, `typesafe` (hosted Jev), or
+  `none`. `probs` is null exactly when calibration is `none`; nothing is ever one-hot.
+
+The write policy (`policy_defaults.yaml`, `mesa_anyjev.policy`) reads `p_true` for yes/no
+questions (never `confidence`, which is the larger of p and 1-p) and `confidence` for
+choices. A decision becomes:
+
+* `auto` only with an AnyJev level at or above both the question's and the profile's floor
+  (`prod`: L1), a calibration the profile allows, a numeric threshold that cites the
+  leave-one-card-out bench cell it came from, and no label missing from the gateway's top-20
+  in that batch;
+* `proposed` at or above the propose threshold (the curator sees a ranked picker);
+* `abstain` otherwise.
+
+The shipped defaults are proposed-only (`auto: null` everywhere) until a bench run exists.
+
+---8<--- https://idss-mesa.github.io/mesa-anyjev/concepts/provenance/
+
+---
+title: "Provenance"
+description: "The mesa-anyjev sidecar: runs, decisions, options, groups, AVU links, human overrides and labels, and how it joins the mesa-ducklake AVU history."
+type: Reference
+tags:
+  - concepts
+  - provenance
+  - ducklake
+generated:
+  by: "claude/fable-5.1"
+  at: "2026-09-25T00:00:00Z"
+sources:
+  - id: design
+    resource: "https://github.com/idss-mesa/mesa-anyjev/blob/main/DESIGN.md"
+    title: "mesa-anyjev decisions register (DESIGN.md)"
+    author: "team:idss-mesa"
+  - id: research
+    resource: "https://github.com/idss-mesa/mesa-anyjev/blob/main/RESEARCH.md"
+    title: "mesa-anyjev verified facts (RESEARCH.md)"
+    author: "team:idss-mesa"
+status: draft
+---
+
+# Provenance
+
+Decision provenance is a sidecar owned by mesa-anyjev (DESIGN D4): Postgres schema
+`mesa_anyjev` (its own migrations, `src/mesa_anyjev/provenance/migrations/`) or a DuckDB file
+for development. It is never a column on mesa-ducklake's `avu_changes` (the AVU triple is a
+hard contract) and never a table in schema `mesa`.
+
+Tables: `runs`, `decisions` (one row per answered question with state, provider, level,
+calibration, probabilities, thresholds in force and outcome), `decision_options`,
+`decision_groups` (a ranking over candidates), `avu_links` (the AVU a decision produced and
+its write status), `human_overrides`, `labels`.
+
+The join into the AVU history is `(project_id, snapshot_id, irods_path, attribute, value,
+unit)`; `snapshot_id` is null for decisions and links that wrote nothing. Every AVU written by
+mesa-anyjev also carries a per-row `source` tag of the form `mesa-anyjev:<tool>:<outcome>` in
+mesa-ducklake, so `get_history` shows which rows were written automatically and which by a
+curator without a join.
+
+Decisions are never updated; only a link's write status and snapshot id, and a run's status,
+change. Corrections are new rows.
+
+---8<--- https://idss-mesa.github.io/mesa-anyjev/bench/results/
+
+---
+title: "Bench results"
+description: "Measured raw, L0 and L1 numbers per question on the CARC gateway and the synthetic backend, every cell naming its results JSON."
+type: Reference
+tags:
+  - bench
+  - results
+  - calibration
+generated:
+  by: "claude/fable-5.1"
+  at: "2026-09-25T00:00:00Z"
+sources:
+  - id: gateway-results
+    resource: "https://github.com/idss-mesa/mesa-anyjev/blob/main/bench/results/2026-09-25/RedHatAI__Qwen3-8B-NVFP4.gateway.json"
+    title: "bench results 2026-09-25, carc-fast through the CARC gateway"
+    author: "team:idss-mesa"
+  - id: fake-results
+    resource: "https://github.com/idss-mesa/mesa-anyjev/blob/main/bench/results/2026-09-25/fake.fake.json"
+    title: "bench results 2026-09-25, synthetic backend"
+    author: "team:idss-mesa"
+status: draft
+stale_after: "2026-12-31T00:00:00Z"
+---
+
+# Bench results
+
+Labels are the neon-avu-eval silver (agreement between four agentic models, not truth;
+see [Learning](../concepts/learning.md)). `L1 (LOCO)` cells are pooled held-out decisions
+over seven leave-one-card-out folds. `cov@5%` is the share of items that can be answered
+before the error rate on the answered set exceeds 5%; `flip` is the answer change under
+option reversal (choice) or phrasing swap (yes/no). Every number below names its JSON.
+
+## carc-fast (RedHatAI/Qwen3-8B-NVFP4) through the CARC gateway, 2026-09-25
+
+| task | n | level | acc | ece | brier | cov@5% | cov@10% | flip | n_neg | prompts | ms/dec |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| neon_term_fits | 285 | raw | 0.502 | 0.372 | 0.780 | 0.004 | 0.004 |  | 199 | 285 | 100.6 |
+| neon_term_fits | 285 | L0 | 0.611 | 0.262 | 0.605 | 0.007 | 0.049 | 0.393 | 199 | 570 | 126.5 |
+| neon_term_fits | 285 | L1 (LOCO) | 0.621 | 0.072 | 0.459 | 0.007 | 0.042 |  | 199 | 3990 | 728.9 |
+| neon_term_choice26 | 44 | raw | 0.227 | 0.689 | 1.443 | 0.000 | 0.000 |  | 28 | 44 | 151.6 |
+| neon_term_choice26 | 44 | L0 | 0.205 | 0.689 | 1.460 | 0.000 | 0.000 | 0.343 | 28 | 152 | 354.5 |
+| neon_term_choice26 | 44 | L1 | n/a | | | | | | | | |
+| neon_annotate | 98 | raw | 0.378 | 0.517 | 1.062 | 0.000 | 0.000 |  | 35 | 98 | 46.8 |
+| neon_annotate | 98 | L0 | 0.398 | 0.490 | 1.020 | 0.000 | 0.000 | 0.316 | 35 | 196 | 39.1 |
+| neon_annotate | 98 | L1 (LOCO) | 0.294 | 0.467 | 0.560 | 0.000 | 0.000 |  | 5 | 196 | 40.4 |
+| neon_aspect | 60 | raw | 0.600 | 0.376 | 0.775 | 0.000 | 0.000 | 0.433 | 0 | 120 | 83.2 |
+| neon_aspect | 60 | L0 | 0.583 | 0.373 | 0.736 | 0.000 | 0.000 | 0.283 | 0 | 444 | 242.0 |
+| neon_aspect | 60 | L1 (LOCO) | 0.600 | 0.181 | 0.552 | 0.017 | 0.017 |  | 0 | 1680 | 718.0 |
+| neon_ontology_fits | 190 | raw | 0.411 | 0.575 | 1.140 | 0.047 | 0.063 |  | 114 | 190 | 47.4 |
+| neon_ontology_fits | 190 | L0 | 0.474 | 0.417 | 0.868 | 0.032 | 0.116 | 0.289 | 114 | 380 | 47.6 |
+| neon_ontology_fits | 190 | L1 (LOCO) | 0.458 | 0.182 | 0.494 | 0.068 | 0.105 |  | 114 | 2660 | 310.7 |
+| neon_keep_avu | 313 | raw | 0.965 | 0.025 | 0.064 | 1.000 | 1.000 |  | 11 | 313 | 171.9 |
+| neon_keep_avu | 313 | L0 | 0.895 | 0.044 | 0.160 | 0.786 | 0.974 | 0.323 | 11 | 626 | 178.4 |
+| neon_keep_avu | 313 | L1 | n/a | | | | | | | | |
+| neon_value_kind | 278 | raw | 0.507 | 0.457 | 0.937 | 0.004 | 0.004 | 0.259 | 0 | 556 | 73.0 |
+| neon_value_kind | 278 | L0 | 0.475 | 0.462 | 0.942 | 0.004 | 0.004 | 0.194 | 0 | 1578 | 124.2 |
+| neon_value_kind | 278 | L1 (LOCO) | 0.468 | 0.124 | 0.642 | 0.004 | 0.004 |  | 0 | 4759 | 377.2 |
+
+How to read it (`bench/results/2026-09-25/RedHatAI__Qwen3-8B-NVFP4.gateway.json`):
+
+* **term.fits** (285 candidate states, 199 negatives): accuracy 0.502 raw, 0.611 at L0,
+  0.621 at L1; ECE 0.372, 0.262, 0.072. Calibration meets the pre-registered 0.10 bar at
+  L1, but coverage at 5% risk is 0.007 (two items), so every `auto` threshold stays null.
+* **neon_term_choice26** is the control: one choice per column over its candidates with a
+  new key per item, so it can only run raw/L0 and never learns (accuracy 0.23 / 0.21).
+* **column.aspect** (K=8) already lost 19 labels to the gateway's top-20 readout at L0;
+  the wider the choice, the more the gateway erases (DESIGN D11).
+* **avu.keep** has only 11 negatives, so no leave-one-card-out fold is allowed to fit; its
+  raw/L0 numbers reflect a positives-heavy label set, not a calibrated gate.
+* The bench's L1 cells were fitted with adaptive shifts (the provider's default) whereas
+  `learn fit` fits without them; on term.fits they disagree on ECE (0.072 here, 0.231 in the
+  promoted bundle's manifest). Milestone M3 makes both use one fitting path.
+
+## Synthetic backend (planted biases; numbers are not a claim about any model)
+
+| task | n | level | acc | ece | brier | cov@5% | cov@10% | flip | n_neg | prompts | ms/dec |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| neon_term_fits | 285 | raw | 0.442 | 0.504 | 1.017 | 0.007 | 0.007 |  | 199 | 285 | 0.1 |
+| neon_term_fits | 285 | L0 | 0.442 | 0.488 | 0.946 | 0.007 | 0.007 | 0.004 | 199 | 570 | 0.2 |
+| neon_term_fits | 285 | L1 (LOCO) | 0.442 | 0.178 | 0.508 | 0.007 | 0.007 |  | 199 | 3990 | 1.2 |
+| neon_term_choice26 | 44 | raw | 0.250 | 0.249 | 0.811 | 0.000 | 0.000 |  | 28 | 44 | 0.2 |
+| neon_term_choice26 | 44 | L0 | 0.159 | 0.317 | 0.841 | 0.000 | 0.000 | 0.411 | 28 | 221 | 0.7 |
+| neon_term_choice26 | 44 | L1 | n/a | | | | | | | | |
+| neon_annotate | 98 | raw | 0.643 | 0.238 | 0.573 | 0.020 | 0.020 |  | 35 | 98 | 0.1 |
+| neon_annotate | 98 | L0 | 0.622 | 0.101 | 0.473 | 0.020 | 0.020 | 0.163 | 35 | 196 | 0.2 |
+| neon_annotate | 98 | L1 (LOCO) | 0.647 | 0.353 | 0.457 | 0.118 | 0.118 |  | 5 | 196 | 0.1 |
+| neon_aspect | 60 | raw | 0.200 | 0.216 | 0.964 | 0.017 | 0.017 | 0.917 | 0 | 120 | 0.3 |
+| neon_aspect | 60 | L0 | 0.117 | 0.156 | 0.878 | 0.000 | 0.000 | 0.000 | 0 | 861 | 1.8 |
+| neon_aspect | 60 | L1 (LOCO) | 0.167 | 0.164 | 0.890 | 0.000 | 0.000 |  | 0 | 3074 | 6.3 |
+| neon_ontology_fits | 190 | raw | 0.400 | 0.480 | 0.938 | 0.000 | 0.000 |  | 114 | 190 | 0.1 |
+| neon_ontology_fits | 190 | L0 | 0.432 | 0.167 | 0.549 | 0.000 | 0.000 | 0.189 | 114 | 380 | 0.2 |
+| neon_ontology_fits | 190 | L1 (LOCO) | 0.432 | 0.123 | 0.501 | 0.000 | 0.000 |  | 114 | 2660 | 1.0 |
+| neon_keep_avu | 313 | raw | 0.965 | 0.085 | 0.083 | 1.000 | 1.000 |  | 11 | 313 | 0.2 |
+| neon_keep_avu | 313 | L0 | 0.911 | 0.318 | 0.352 | 0.888 | 1.000 | 0.173 | 11 | 626 | 0.3 |
+| neon_keep_avu | 313 | L1 | n/a | | | | | | | | |
+| neon_value_kind | 278 | raw | 0.478 | 0.130 | 0.691 | 0.007 | 0.007 | 1.000 | 0 | 556 | 0.3 |
+| neon_value_kind | 278 | L0 | 0.216 | 0.112 | 0.757 | 0.004 | 0.004 | 0.007 | 0 | 2195 | 0.8 |
+| neon_value_kind | 278 | L1 (LOCO) | 0.227 | 0.107 | 0.750 | 0.004 | 0.004 |  | 0 | 7661 | 2.4 |
+
 ---8<--- https://idss-mesa.github.io/mesa-anyjev/develop/architecture/
 
 ---
