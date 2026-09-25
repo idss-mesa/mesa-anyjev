@@ -92,10 +92,11 @@ uv run mesa-anyjev doctor --backend gateway
 The doctor checks liveness, that the served tokenizer loads at the pinned revision, that
 the answer labels are single tokens, that a two-option probe rendered through the chat
 template comes back with both labels in the top-20, and that `logprobs=26` is refused (the
-cap is 20). Then:
+cap is 20). Then (`auto` replays recorded OLS responses and records the pairs a real model
+searches for the first time):
 
 ```bash
-MESA_ANYJEV_BACKEND__KIND=gateway MESA_ANYJEV_OLS__FIXTURES=replay uv run mesa-anyjev annotate \
+MESA_ANYJEV_BACKEND__KIND=gateway MESA_ANYJEV_OLS__FIXTURES=auto uv run mesa-anyjev annotate \
     --level L0 --card tests/fixtures/cards/DP1.10022.001.bet_sorting.md \
     --provenance duckdb:///$PWD/.local/prov.duckdb --out .local/gateway_L0.json
 ```
@@ -356,5 +357,6 @@ third-party component.
 
 ## 2026-09-25
 
+* **Creation**: [Learning](concepts/learning.md) for milestone M2 (label sources, LOCO fitting, guards, promotion).
 * **Creation**: [Quickstart](getting-started/quickstart.md) and [Gateway](getting-started/gateway.md) for milestone M1 (annotate, apply, explain; the doctor's gateway checks).
 * **Creation**: the documentation bundle for milestone M0: [Getting started](getting-started/index.md) ([Install](getting-started/install.md), [Configuration](getting-started/configuration.md)), [Concepts](concepts/index.md) ([Decision graph](concepts/decision-graph.md), [Levels and policy](concepts/levels-and-policy.md), [Provenance](concepts/provenance.md), [Hosted providers](concepts/hosted-providers.md)), [Develop](develop/index.md) ([Architecture](develop/architecture.md), [Testing](develop/testing.md)) and [About](about/index.md) ([AI agents](about/ai-agents.md), [License](about/license.md)).
