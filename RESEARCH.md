@@ -27,6 +27,12 @@ Every fact names where it was verified. Re-check anything marked `stale_after`.
   top_logprobs=5` also works; `chat_template_kwargs.enable_thinking=false` passes through.
   Consequence: a label outside the top-20 floors at -30 in AnyJev's `VLLMBackend`, and the L0
   log-mean over cyclic shifts then erases the option. `stale_after: 2026-12-31`.
+- First engine run (2026-09-25, `bet_sorting`, carc-fast, L0, static planner, OLS fixtures
+  auto): 82 decisions from 124 prefills in 5.1 s; `column.annotate` mean p_true 0.22 over 10
+  columns with a phrasing-flip rate of 0.30 at L0; `column.ontology_fits` said Yes to nearly
+  every ontology (mean 0.98) so the twin is not discriminative before calibration; 4 of 124
+  prefills had a label outside the top-20 and their batches were capped at abstain (D11).
+  Numbers from the run's sidecar rows, not a bench file; the bench arrives in M2.
 - Any gateway change (`--max-logprobs`, a pooling instance of the decision model, a
   text-completion alias, direct vLLM ports) is a request to `tredfear`.
 

@@ -52,6 +52,59 @@ The sections and every field with its default are in `config.yaml.example` and
 | `artifacts`, `provenance`, `ducklake`, `ols`, `motherduck` | Bundle directory, sidecar DSN, local DuckLake catalog, OLS base URL and fixtures, hosted Jev settings. |
 | `eval_root` | The neon-avu-eval checkout for silver labels and the bench (no default). |
 
+---8<--- https://idss-mesa.github.io/mesa-anyjev/getting-started/gateway/
+
+---
+title: "Gateway"
+description: "Decide with carc-fast on the CARC LiteLLM gateway at L0: the tunnel, the key, what the doctor checks, and what the gateway cannot do."
+type: Guide
+tags:
+  - getting-started
+  - gateway
+  - carc
+generated:
+  by: "claude/fable-5.1"
+  at: "2026-09-25T00:00:00Z"
+sources:
+  - id: design
+    resource: "https://github.com/idss-mesa/mesa-anyjev/blob/main/DESIGN.md"
+    title: "mesa-anyjev decisions register (DESIGN.md)"
+    author: "team:idss-mesa"
+  - id: research
+    resource: "https://github.com/idss-mesa/mesa-anyjev/blob/main/RESEARCH.md"
+    title: "mesa-anyjev verified facts (RESEARCH.md)"
+    author: "team:idss-mesa"
+status: draft
+---
+
+# Gateway
+
+The gateway is LiteLLM in front of vLLM on the CARC hosts (RESEARCH.md). It is reached only
+over a loopback SSH tunnel: `127.0.0.1:8000` (the `carc-litellm-tunnel` user unit) or
+`127.0.0.1:18000` (mesa-mcp's `scripts/llm_tunnel.sh`). Never `source` mesa-mcp's `.env`;
+take the key out of it:
+
+```bash
+export MESA_LLM_API_KEY=$(grep '^MESA_LLM_API_KEY=' ../mesa-mcp/.env | cut -d= -f2-)
+uv run mesa-anyjev doctor --backend gateway
+```
+
+The doctor checks liveness, that the served tokenizer loads at the pinned revision, that
+the answer labels are single tokens, that a two-option probe rendered through the chat
+template comes back with both labels in the top-20, and that `logprobs=26` is refused (the
+cap is 20). Then:
+
+```bash
+MESA_ANYJEV_BACKEND__KIND=gateway MESA_ANYJEV_OLS__FIXTURES=replay uv run mesa-anyjev annotate \
+    --level L0 --card tests/fixtures/cards/DP1.10022.001.bet_sorting.md \
+    --provenance duckdb:///$PWD/.local/prov.duckdb --out .local/gateway_L0.json
+```
+
+What the gateway cannot do (DESIGN D11): it drops `allowed_token_ids`, so every request asks
+for the top-20 logprobs and a label outside them is floored and counted as missing; a batch
+with a missing label never auto-writes. It serves no hidden states, so L2 needs local
+weights (milestone M3). Choices with more than eight options use their yes/no twin.
+
 ---8<--- https://idss-mesa.github.io/mesa-anyjev/getting-started/install/
 
 ---
@@ -100,6 +153,62 @@ Python 3.11 or newer. `anyjev`, `mesa-mcp` and `mesa-ducklake` come from pinned 
 
 The gateway is reached only over a loopback SSH tunnel; see `RESEARCH.md` in the repository
 for the hosts, the served models and what the gateway does and does not pass through.
+
+---8<--- https://idss-mesa.github.io/mesa-anyjev/getting-started/quickstart/
+
+---
+title: "Quickstart"
+description: "Annotate one dataset card end to end with the fake backend, apply the proposals to a local DuckLake, and read the provenance back."
+type: Tutorial
+tags:
+  - getting-started
+  - quickstart
+generated:
+  by: "claude/fable-5.1"
+  at: "2026-09-25T00:00:00Z"
+sources:
+  - id: design
+    resource: "https://github.com/idss-mesa/mesa-anyjev/blob/main/DESIGN.md"
+    title: "mesa-anyjev decisions register (DESIGN.md)"
+    author: "team:idss-mesa"
+  - id: research
+    resource: "https://github.com/idss-mesa/mesa-anyjev/blob/main/RESEARCH.md"
+    title: "mesa-anyjev verified facts (RESEARCH.md)"
+    author: "team:idss-mesa"
+status: draft
+---
+
+# Quickstart
+
+Everything below runs offline on the synthetic backend and a local DuckLake catalog; the
+recorded OLS responses under `tests/fixtures/ols/` stand in for the EMBL-EBI API.
+
+```bash
+export MESA_ANYJEV_OLS__FIXTURES=replay MESA_ANYJEV_POLICY__PROFILE=dev
+uv run mesa-anyjev annotate --card tests/fixtures/cards/DP1.10003.001.brd_countdata.md \
+    --backend fake --planner static \
+    --provenance duckdb:///$PWD/.local/prov.duckdb --out .local/run.json
+```
+
+`annotate` decides and proposes; it writes nothing to iRODS. The run id, the proposals with
+their probability and level, and the neon-avu-eval result shape are in `.local/run.json`.
+The shipped policy is proposed-only, so the curator accepts the run:
+
+```bash
+RUN=$(jq -r .run_id .local/run.json)
+uv run mesa-anyjev apply --run-id $RUN --accept proposed \
+    --provenance duckdb:///$PWD/.local/prov.duckdb \
+    --local-ducklake duckdb:///$PWD/.local/lake.duckdb \
+    --irods-path /local/mesa-anyjev/DP1.10003.001/brd_countdata.csv --actor $USER
+uv run mesa-anyjev explain --provenance duckdb:///$PWD/.local/prov.duckdb \
+    --path /local/mesa-anyjev/DP1.10003.001/brd_countdata.csv
+```
+
+`apply` writes one mesa-ducklake snapshot for the run and path with the source tag
+`mesa-anyjev:apply:human`; `explain` joins each AVU back to the decision that produced it,
+its level and its snapshot id.
+
+To decide with a real model, see [Gateway](gateway.md).
 
 ---8<--- https://idss-mesa.github.io/mesa-anyjev/develop/architecture/
 
@@ -247,4 +356,5 @@ third-party component.
 
 ## 2026-09-25
 
+* **Creation**: [Quickstart](getting-started/quickstart.md) and [Gateway](getting-started/gateway.md) for milestone M1 (annotate, apply, explain; the doctor's gateway checks).
 * **Creation**: the documentation bundle for milestone M0: [Getting started](getting-started/index.md) ([Install](getting-started/install.md), [Configuration](getting-started/configuration.md)), [Concepts](concepts/index.md) ([Decision graph](concepts/decision-graph.md), [Levels and policy](concepts/levels-and-policy.md), [Provenance](concepts/provenance.md), [Hosted providers](concepts/hosted-providers.md)), [Develop](develop/index.md) ([Architecture](develop/architecture.md), [Testing](develop/testing.md)) and [About](about/index.md) ([AI agents](about/ai-agents.md), [License](about/license.md)).
