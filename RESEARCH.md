@@ -149,6 +149,32 @@ Every fact names where it was verified. Re-check anything marked `stale_after`.
 - DataCite enums (`mesa_mcp.datacite.schema`): ResourceTypeGeneral 28, ContributorType 21,
   RelationType 23, RelatedIdentifierType 15, DateType 10, DescriptionType 6, NameType 2.
 
+## mesa-mcp integration facts (main 8fbaedf, read 2026-09-25 for M4)
+
+- `register_tool(name, description, *, input_model, output_model)` (server.py); handlers
+  are `async def h(args: Model, auth_value=None, elicited=None) -> dict`, the two keywords
+  injected only when declared. `ToolSpec.meta` existed but was never populated; `_meta` on
+  the wire was only `{"io.mesa/surface": _tool_surface(name)}` (prefix rule; anything else
+  is `core`). No entry-point loading anywhere: tools register through side-effect imports of
+  the four subsystem packages. PR #6 (feat/plugin-entry-points) adds `register_tool(meta=)`,
+  `load_plugins()` over the `mesa_mcp.tools` group and `server.strict_plugins`.
+- MRTR: `InputRequired(message, schema, state, key)`; the server encodes `state` as compact
+  JSON in urlsafe base64, unsigned, at most 16 KiB (32 KiB on decode); on resume the handler
+  sees `elicited={"responses": {key: {"action", "content"}}, "state": {...}}`. mesa-mcp's own
+  picker (`mesa_avu_apply_term`) offers at most 8 candidates as an `iri` enum with
+  `enumNames`, message `Which ENVO term describes 'value'?`, and accepts only an IRI it
+  offered; decline or cancel raises `invalid_argument`.
+- `record_avu_change(s)` still return `None` on main (mesa-mcp PR #5 open). The mirror uses a
+  process-wide `DuckLakeClient` singleton (`get_default_client()`), so `mesa_decide_apply`
+  passes that client to its own `record_changes` and keeps the `mesa-anyjev:` source tag.
+- Conformance (`tests/test_spec_conformance_2026_07_28.py`) asserts per tool: a 2020-12
+  `$schema` on the input (and any output) schema that passes `check_schema`, a non-empty
+  `_meta` with `io.mesa/surface`. mesa-anyjev's five tools pass it in mesa-mcp's own suite
+  when installed beside it (468 passed with the loader branch).
+- Postgres sidecar verified 2026-09-25 against `postgres:16` in Docker (round trip, CHECK
+  constraint, ON CONFLICT label dedup) with psycopg 3. No iRODS credentials exist on this
+  host, so the `e2e` chooser tier is written and gated but not yet run.
+
 ## neon-avu-eval (labels and states)
 
 - 7 dataset cards (DP1.10003.001 brd_countdata, brd_perpoint; DP1.10022.001 bet_*), 42 runs

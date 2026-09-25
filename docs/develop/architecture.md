@@ -32,3 +32,11 @@ separate role that only proposes. `mesa_mcp.ols` provides the OLS client and the
 AVU transform; `mesa_ducklake.DuckLakeClient` records snapshots.
 
 The code map is in `CLAUDE.md`; the decisions in `DESIGN.md`; the facts in `RESEARCH.md`.
+
+## Service and tools (M4)
+
+`service.py` holds the collaborators (provider, planner, OLS layer, policy, store) behind one
+lock with a bounded wait (`policy.max_wait_s`; a busy decider degrades to
+`decider_unavailable` instead of queueing), and owns the human-feedback path. The CLI and
+the `mesa_decide_*` tools (`mcp_tools/`) both build on it; `chooser.py` answers mesa-mcp's
+own picker. See [MCP tools](../concepts/mcp-tools.md).

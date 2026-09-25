@@ -9,6 +9,15 @@ All notable changes to the mesa-anyjev package. The format follows
 
 ### Added
 
+- Milestone M4: mesa-mcp integration. `DecisionService` (one lock with a bounded wait,
+  human picks as overrides, labels and link changes, candidates read back from the sidecar);
+  the `mesa_decide_annotate|apply|explain|feedback|health` tools registered into mesa-mcp's
+  registry with the surface `decision` (entry point `mesa_mcp.tools`; mesa-mcp PR #6 adds the
+  loader), `apply` asking one elicitation per open candidate group with an ids-only state
+  and a tamper guard; `ElicitationChooser` for mesa-mcp's own term picker with the
+  `tests/e2e` harness; the Postgres sidecar store on the packaged migration; `provenance
+  export` (Parquet) and `provenance reconcile`; the `feedback` CLI verb; iRODS-mode apply
+  resolves the nearest registered project and never registers one.
 - Milestone M3: local L2 on the GB10. The `hf` extra (torch 2.14 CUDA 13, transformers 5,
   accelerate) loads `Qwen/Qwen3-8B` through AnyJev's `HFBackend`; `doctor --backend hf`
   checks the device, the model's depth and width, single-token labels, answer mass and the

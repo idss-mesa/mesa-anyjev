@@ -20,6 +20,7 @@ uv run mesa-anyjev doctor                          # what this host can reach
 export MESA_LLM_API_KEY=$(grep '^MESA_LLM_API_KEY=' ../mesa-mcp/.env | cut -d= -f2-)   # never `source` that file
 MESA_ANYJEV_ENGINE=gateway uv run pytest -q -m engine tests/engine   # needs the tunnel (see RESEARCH.md)
 MESA_ANYJEV_ENGINE=hf uv run pytest -q -m engine tests/engine/test_hf_l2.py   # CUDA host, hf extra, ~2 min load
+MESA_ANYJEV_TEST_PG_DSN=postgresql://... uv run pytest -q -m requires_postgres  # docker postgres:16 (docs/develop/testing.md)
 ```
 
 ## Fixed decisions (do not re-litigate; details in DESIGN.md)
