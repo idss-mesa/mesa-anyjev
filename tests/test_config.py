@@ -55,3 +55,14 @@ def test_config_sha_excludes_the_key() -> None:
 def test_extra_fields_rejected() -> None:
     with pytest.raises(Exception, match="extra"):
         Config.model_validate({"backend": {"bogus": 1}})
+
+
+def test_gate_variables_are_not_settings() -> None:
+    cfg = load_config(
+        env={
+            "MESA_ANYJEV_ENGINE": "gateway",
+            "MESA_ANYJEV_LIVE": "1",
+            "MESA_ANYJEV_EVAL_ROOT": "/x",
+        }
+    )
+    assert cfg.eval_root == "/x"

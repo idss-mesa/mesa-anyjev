@@ -11,7 +11,9 @@ For the decisions and verified facts behind the design, read DESIGN.md and RESEA
 ## Getting started
 
 - [Configuration](https://idss-mesa.github.io/mesa-anyjev/getting-started/configuration/): Configure mesa-anyjev with a YAML file, MESA_ANYJEV_ environment variables or flags; precedence and the mesa-mcp fallbacks. (draft)
+- [Gateway](https://idss-mesa.github.io/mesa-anyjev/getting-started/gateway/): Decide with carc-fast on the CARC LiteLLM gateway at L0: the tunnel, the key, what the doctor checks, and what the gateway cannot do. (draft)
 - [Install](https://idss-mesa.github.io/mesa-anyjev/getting-started/install/): Install mesa-anyjev with uv, choose the extras for the gateway, local weights, Claude or Postgres, and run the doctor. (draft)
+- [Quickstart](https://idss-mesa.github.io/mesa-anyjev/getting-started/quickstart/): Annotate one dataset card end to end with the fake backend, apply the proposals to a local DuckLake, and read the provenance back. (draft)
 
 ## Develop
 

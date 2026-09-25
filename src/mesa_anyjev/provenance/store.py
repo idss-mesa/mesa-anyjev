@@ -113,9 +113,15 @@ class ProvenanceStore(Protocol):
         self, rows: Sequence[DecisionRow], options: Sequence[DecisionOptionRow] = ()
     ) -> int: ...
     def insert_group(self, row: DecisionGroupRow) -> UUID: ...
+    def update_group(self, group_id: UUID, **summary: Any) -> None: ...
     def insert_links(self, rows: Sequence[AvuLinkRow]) -> int: ...
     def set_link_status(
-        self, link_ids: Iterable[UUID], status: str, *, written_at: datetime | None = None
+        self,
+        link_ids: Iterable[UUID],
+        status: str,
+        *,
+        written_at: datetime | None = None,
+        irods_path: str | None = None,
     ) -> int: ...
     def link_snapshot(
         self, run_id: UUID, irods_path: str, project_id: UUID | None, snapshot_id: int
@@ -124,6 +130,7 @@ class ProvenanceStore(Protocol):
     def insert_labels(self, rows: Sequence[LabelRow]) -> int: ...
     def run(self, run_id: UUID) -> dict[str, Any] | None: ...
     def decisions(self, run_id: UUID) -> list[dict[str, Any]]: ...
+    def groups(self, run_id: UUID) -> list[dict[str, Any]]: ...
     def links(self, run_id: UUID) -> list[dict[str, Any]]: ...
     def labels_for(
         self, question_key: str, *, min_weight: float = 0.0, exclude_cards: Sequence[str] = ()
@@ -225,19 +232,56 @@ class DuckDBStore:
         self._insert("decision_groups", [row])
         return row.group_id
 
+    def update_group(self, group_id: UUID, **summary: Any) -> None:
+        """Groups summarise a ranking; the summary is set once after the batch returns."""
+        allowed = {
+            "winner_decision_id",
+            "top_p",
+            "group_margin",
+            "level",
+            "outcome",
+            "missing_labels",
+            "n_candidates",
+        }
+        sets, values = [], []
+        for key, value in summary.items():
+            if key not in allowed:
+                raise ValueError(f"update_group: {key} is not a summary column")
+            sets.append(f"{key} = ?")
+            values.append(_cell(value))
+        if not sets:
+            return
+        values.append(str(group_id))
+        self._con.execute(
+            f"UPDATE mesa_anyjev.decision_groups SET {', '.join(sets)} WHERE group_id = ?",  # noqa: S608
+            values,
+        )
+
     def insert_links(self, rows: Sequence[AvuLinkRow]) -> int:
         return self._insert("avu_links", rows)
 
     def set_link_status(
-        self, link_ids: Iterable[UUID], status: str, *, written_at: datetime | None = None
+        self,
+        link_ids: Iterable[UUID],
+        status: str,
+        *,
+        written_at: datetime | None = None,
+        irods_path: str | None = None,
     ) -> int:
         ids = [str(i) for i in link_ids]
         if not ids:
             return 0
-        self._con.executemany(
-            "UPDATE mesa_anyjev.avu_links SET write_status = ?, written_at = ? WHERE link_id = ?",
-            [[status, written_at, i] for i in ids],
-        )
+        if irods_path is None:
+            self._con.executemany(
+                "UPDATE mesa_anyjev.avu_links SET write_status = ?, written_at = ? WHERE link_id = ?",
+                [[status, written_at, i] for i in ids],
+            )
+        else:
+            self._con.executemany(
+                "UPDATE mesa_anyjev.avu_links SET write_status = ?, written_at = ?, irods_path = ? "
+                "WHERE link_id = ?",
+                [[status, written_at, irods_path, i] for i in ids],
+            )
         return len(ids)
 
     def link_snapshot(
@@ -284,6 +328,11 @@ class DuckDBStore:
     def run(self, run_id: UUID) -> dict[str, Any] | None:
         rows = self._select("SELECT * FROM mesa_anyjev.runs WHERE run_id = ?", [str(run_id)])
         return rows[0] if rows else None
+
+    def groups(self, run_id: UUID) -> list[dict[str, Any]]:
+        return self._select(
+            "SELECT * FROM mesa_anyjev.decision_groups WHERE run_id = ? ORDER BY ts", [str(run_id)]
+        )
 
     def decisions(self, run_id: UUID) -> list[dict[str, Any]]:
         return self._select(

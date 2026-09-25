@@ -31,7 +31,7 @@ PlannerKind = Literal["gateway", "claude", "static"]
 Level = Literal["raw", "L0", "L1", "L2", "auto"]
 Profile = Literal["prod", "dev"]
 HostedMode = Literal["off", "allowlist"]
-FixtureMode = Literal["off", "record", "replay"]
+FixtureMode = Literal["off", "record", "replay", "auto"]
 
 
 class _Section(BaseModel):
@@ -171,8 +171,10 @@ def _env_overrides(env: Mapping[str, str]) -> dict[str, Any]:
         if ENV_DELIM in rest:
             section, field = rest.split(ENV_DELIM, 1)
             out.setdefault(section.lower(), {})[field.lower()] = _coerce(value)
-        else:
+        elif rest.lower() in Config.model_fields:
             out[rest.lower()] = _coerce(value)
+        # Anything else at the top level (MESA_ANYJEV_ENGINE, _LIVE, _E2E, _MOTHERDUCK,
+        # _TEST_PG_*) is a test-tier gate read by conftest, not a setting.
     # mesa-mcp compatibility fallbacks (only when the native name is absent).
     backend = out.setdefault("backend", {})
     if "gateway_base_url" not in backend and env.get("MESA_LLM_BASE_URL"):

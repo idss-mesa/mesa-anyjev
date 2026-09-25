@@ -12,7 +12,9 @@ from mesa_anyjev.artifacts import ArtifactStore, model_slug
 
 
 def _decider() -> Decider:
-    backend = FakeBackend(content=lambda state, option: 1.0 if option in state else -1.0, position_bias=[0.5, 0.0])
+    backend = FakeBackend(
+        content=lambda state, option: 1.0 if option in state else -1.0, position_bias=[0.5, 0.0]
+    )
     return Decider(backend, level="L0", adaptive_shifts=False)
 
 
@@ -28,8 +30,14 @@ def test_save_promote_load(tmp_path: Path) -> None:
     dec.calibrate(q, states, labels)  # an L1 artifact
     store = ArtifactStore(tmp_path, "fake", "lock" * 16)
     assert store.versions() == [] and store.current() is None
-    v1 = store.save(dec, {"fitted_on": {"backend_kind": "fake"}, "per_question": {"t": {"level": "L1"}}})
-    assert v1.version == 1 and (v1.path / "artifacts.json").exists() and (v1.path / "observations.json").exists()
+    v1 = store.save(
+        dec, {"fitted_on": {"backend_kind": "fake"}, "per_question": {"t": {"level": "L1"}}}
+    )
+    assert (
+        v1.version == 1
+        and (v1.path / "artifacts.json").exists()
+        and (v1.path / "observations.json").exists()
+    )
     assert store.current() is None
     store.promote(1)
     assert store.current() is not None and store.current().version == 1  # type: ignore[union-attr]
