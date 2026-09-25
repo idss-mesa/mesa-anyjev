@@ -59,6 +59,61 @@ def _cmd_feedback(args: argparse.Namespace, cfg: Config) -> int:
     return EXIT_OK
 
 
+def _cmd_hosted(args: argparse.Namespace, cfg: Config) -> int:
+    """``hosted score``: MotherDuck prompt_jev over stored states (D16: policy-gated)."""
+    from uuid import UUID
+
+    from mesa_anyjev.learn.hosted import batch_from_labels, batch_from_run, score_batch, summarize
+    from mesa_anyjev.policy import DEFAULTS_PATH, load_policy
+    from mesa_anyjev.provenance.store import open_store
+    from mesa_anyjev.providers.motherduck_provider import HostedJevProvider, MotherDuckRunner
+    from mesa_anyjev.service import HostedDisabled, require_hosted
+
+    try:
+        require_hosted(cfg, local_source=True)
+    except HostedDisabled as exc:
+        print(f"hosted_disabled: {exc}", file=sys.stderr)
+        return EXIT_CONFIG
+    store = open_store(args.provenance or cfg.provenance.dsn)
+    try:
+        questions = [q.strip() for q in args.question.split(",") if q.strip()]
+        policy = load_policy(DEFAULTS_PATH)
+        batches = []
+        for qid in questions:
+            if args.source == "labels":
+                batches.append(
+                    batch_from_labels(
+                        store, qid, min_weight=policy.thresholds(qid).min_weight, limit=args.limit
+                    )
+                )
+            else:
+                if not args.run_id:
+                    print("--source run needs --run-id", file=sys.stderr)
+                    return EXIT_CONFIG
+                batches.append(batch_from_run(store, UUID(args.run_id), qid, limit=args.limit))
+        runner = MotherDuckRunner(cfg.motherduck)
+        provider = HostedJevProvider(cfg.motherduck, runner)
+        reports = [
+            score_batch(
+                provider,
+                b,
+                store=store,
+                cfg=cfg,
+                actor=args.actor,
+                out_dir=args.out,
+                date=args.date,
+                dry_run=args.dry_run,
+            )
+            for b in batches
+        ]
+        print(json.dumps(summarize(reports), indent=1, default=str))
+        if not args.dry_run:
+            runner.close()
+        return EXIT_OK
+    finally:
+        store.close()
+
+
 def _cmd_provenance(args: argparse.Namespace, cfg: Config) -> int:
     from uuid import UUID
 
@@ -527,6 +582,25 @@ def build_parser() -> argparse.ArgumentParser:
         "--backend", choices=["fake", "gateway", "hf", "composite"], help="override backend.kind"
     )
     ar.set_defaults(func=_cmd_artifacts)
+
+    ho = sub.add_parser(
+        "hosted",
+        parents=[common],
+        help="hosted Jev on MotherDuck (policy-gated; data leaves the host)",
+    )
+    ho.add_argument("verb", choices=["score"])
+    ho.add_argument("--question", default="term.fits", help="comma-separated question ids")
+    ho.add_argument("--source", choices=["labels", "run"], default="labels")
+    ho.add_argument("--run-id", help="sidecar run to re-score (--source run)")
+    ho.add_argument("--limit", type=int, help="at most this many states per question")
+    ho.add_argument("--out", default="bench/results", help="results directory")
+    ho.add_argument("--date", help="results directory name (default: today, UTC)")
+    ho.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="estimate rows, requests and input size; send nothing",
+    )
+    ho.set_defaults(func=_cmd_hosted)
     return p
 
 

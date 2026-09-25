@@ -120,7 +120,12 @@ def lock_payload() -> dict[str, Any]:
         }
         for qid, spec in QUESTIONS.items()
     }
-    return {"questions": entries, "lock_sha": _sha(entries)}
+    from mesa_anyjev.providers.motherduck_provider import sql_for
+
+    # The hosted SQL literal per question is pinned beside the key (M4b) but does not enter
+    # the sha: rotating artifacts when only the hosted rendering changes would be wrong.
+    hosted_sql = {qid: sql_for(spec.question) for qid, spec in QUESTIONS.items()}
+    return {"questions": entries, "hosted_sql": hosted_sql, "lock_sha": _sha(entries)}
 
 
 def _sha(entries: dict[str, Any]) -> str:

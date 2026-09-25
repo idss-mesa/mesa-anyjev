@@ -58,7 +58,75 @@ def doctor(cfg: Config, *, backend_kind: str | None = None) -> HealthReport:
     elif kind in ("hf", "composite"):
         _hf_checks(cfg, rep)
     _artifact_checks(cfg, rep, kind)
+    if cfg.policy.hosted_providers != "off":
+        _motherduck_checks(cfg, rep)
     return rep
+
+
+def _motherduck_checks(cfg: Config, rep: HealthReport) -> None:
+    """Hosted Jev: the extension loads, the token is present (name only), ``md:`` attaches,
+    a two-option fixture answers, and the observed STRUCT is the one the parser pins."""
+    import os
+
+    import duckdb
+
+    from mesa_anyjev.providers.motherduck_provider import (
+        RESULT_KEYS,
+        HostedJevProvider,
+        MotherDuckRunner,
+    )
+    from mesa_anyjev.questions import Q_TERM_FITS_CHOOSER
+
+    try:
+        con = duckdb.connect()
+        con.execute("INSTALL motherduck")
+        con.execute("LOAD motherduck")
+        con.close()
+        rep.add("motherduck extension", True, f"duckdb {duckdb.__version__}")
+    except Exception as exc:
+        rep.add("motherduck extension", False, f"{type(exc).__name__}: {str(exc)[:160]}")
+        return
+    if not os.environ.get(cfg.motherduck.token_env):
+        rep.add("motherduck token", False, f"{cfg.motherduck.token_env} is not set")
+        return
+    rep.add("motherduck token", True, f"{cfg.motherduck.token_env} is set (never printed)")
+    runner = MotherDuckRunner(cfg.motherduck)
+    try:
+        version = runner.con.execute("SELECT md_version()").fetchone()
+        rep.add(
+            "motherduck attach",
+            True,
+            f"md: attached, database {cfg.motherduck.database}, {version}",
+        )
+    except Exception as exc:
+        rep.add("motherduck attach", False, f"{type(exc).__name__}: {str(exc)[:160]}")
+        return
+    try:
+        raw = runner.score(
+            [
+                'State:\n{"ontology_id": "envo", "value": "forest", "candidate": {"label": "forest biome"}}'
+            ],
+            Q_TERM_FITS_CHOOSER,
+        )[0]
+        rep.add("prompt_jev noul", raw is not None and 0.0 <= float(raw) <= 1.0, f"p={raw}")
+        from anyjev import Question
+
+        q = Question.choice(
+            "Which colour is the sky on a clear day?", ["blue", "green"], name="probe"
+        )
+        raw = runner.score(["State:\nA clear day at noon."], q)[0]
+        shape_ok = isinstance(raw, dict) and all(k in raw for k in RESULT_KEYS)
+        rec = HostedJevProvider(cfg.motherduck, runner).record(q, {"probe": True}, raw)
+        rep.add(
+            "prompt_jev choice",
+            shape_ok and rec.probs is not None,
+            f"keys={sorted(raw) if isinstance(raw, dict) else type(raw).__name__} "
+            f"answer={rec.answer!r} probs={rec.probs}",
+        )
+    except Exception as exc:
+        rep.add("prompt_jev", False, f"{type(exc).__name__}: {str(exc)[:160]}")
+    finally:
+        runner.close()
 
 
 def _hf_checks(cfg: Config, rep: HealthReport) -> None:
