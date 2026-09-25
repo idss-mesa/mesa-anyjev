@@ -43,6 +43,13 @@ Every fact names where it was verified. Re-check anything marked `stale_after`.
   pre-registered criteria (DESIGN.md § Plan): coverage exists but ECE misses the 0.10 bar, so
   every `auto` threshold stays null (proposed-only). Read as agreement with the four agentic
   models, not correctness.
+- First gateway bench (2026-09-25, `bench/results/2026-09-25/RedHatAI__Qwen3-8B-NVFP4.gateway.json`,
+  carc-fast, raw/L0/L1 with leave-one-card-out): `term.fits` acc 0.502 / 0.611 / 0.621, ECE
+  0.372 / 0.262 / 0.072, cov@5% 0.004 / 0.007 / 0.007 (n 285, n_neg 199); `column.aspect`
+  (K=8) lost 19 labels to the top-20 readout at L0 (7 at raw); the choice26 control at L0
+  scored 0.205 on 44 items; `avu.keep` fits nothing (11 negatives). The bench's adaptive-shift
+  L1 and `learn fit`'s full-cycle L1 disagree on ECE (0.072 vs 0.231) on the same labels; one
+  fitting path is an M3 task. Thresholds stay proposed-only.
 - Any gateway change (`--max-logprobs`, a pooling instance of the decision model, a
   text-completion alias, direct vLLM ports) is a request to `tredfear`.
 

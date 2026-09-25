@@ -15,7 +15,8 @@ All notable changes to the mesa-anyjev package. The format follows
   and 10% risk, the `neon_term_choice26` control task, and writes results JSON with the
   environment; `learn fit` fits L1 temperatures with class-count guards and `learn promote`
   gates on held-out regressions; the Claude planner (structured outputs, adaptive thinking,
-  static fallback on refusal).
+  static fallback on refusal). First gateway bench and L1 fit recorded under
+  `bench/results/2026-09-25/` and RESEARCH.md; thresholds stay proposed-only.
 - Milestone M1: one card end to end. `mesa-anyjev annotate` (the decide phase, staged per
   question, every decision and proposal in the sidecar), `apply` (local DuckLake mode, one
   snapshot per run and path, `--accept auto|proposed|all|<ids>`), `explain`, `plan`, and the

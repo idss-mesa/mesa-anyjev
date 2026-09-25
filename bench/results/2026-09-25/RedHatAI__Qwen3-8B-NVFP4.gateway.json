@@ -1,0 +1,1341 @@
+{
+ "backend": "gateway",
+ "date": "2026-09-25",
+ "environment": {
+  "anyjev_commit": "795a4970b47218b7c0686cd579d691fc2cf8df2f",
+  "backend_kind": "gateway",
+  "host": "sparky-1.hpc.unm.edu",
+  "mesa_anyjev": "0.1.0.dev0",
+  "model": "RedHatAI/Qwen3-8B-NVFP4",
+  "nvidia_smi": "NVIDIA GB10, 580.173.02",
+  "platform": "Linux-6.17.0-1029-nvidia-aarch64-with-glibc2.39",
+  "python": "3.12.3",
+  "questions_lock_sha": "0190586d51b5d961dab9bf972e4683ebbf2356d6adf1911a5b2d63cee3ab01e2",
+  "served_model": "carc-fast"
+ },
+ "policy_suggestions": {
+  "column.ontology_fits": {
+   "L1": {
+    "cite": "neon_ontology_fits.L1",
+    "cov@10%": 0.10526315789473684,
+    "cov@5%": 0.06842105263157895,
+    "ece": 0.18242120018208824,
+    "n": 190,
+    "n_neg": 114
+   }
+  },
+  "term.fits": {
+   "L1": {
+    "cite": "neon_term_fits.L1",
+    "cov@10%": 0.042105263157894736,
+    "cov@5%": 0.007017543859649123,
+    "ece": 0.07165511783511103,
+    "n": 285,
+    "n_neg": 199
+   }
+  }
+ },
+ "tasks": {
+  "neon_annotate": {
+   "cells": {
+    "L0": {
+     "acc": 0.3979591836734694,
+     "aurc": 0.714160959881867,
+     "brier": 1.0199006169813192,
+     "class_counts": {
+      "0": 63,
+      "1": 35
+     },
+     "cov@10%": 0.0,
+     "cov@5%": 0.0,
+     "ece": 0.48984130637720524,
+     "flip": 0.3163265306122449,
+     "levels": [
+      "L0"
+     ],
+     "loco": false,
+     "macro_f1": 0.3835163663503572,
+     "masked": false,
+     "mean_p_true": 0.21461644578343878,
+     "missing_labels": 0,
+     "ms_per_decision": 39.1,
+     "n": 98,
+     "n_neg": 35,
+     "nll": 2.736996166971036,
+     "prompts": 196,
+     "seconds": 3.83
+    },
+    "L1": {
+     "acc": 0.29411764705882354,
+     "aurc": 0.6639086211750571,
+     "brier": 0.5595872609761146,
+     "class_counts": {
+      "0": 12,
+      "1": 5
+     },
+     "cov@10%": 0.0,
+     "cov@5%": 0.0,
+     "ece": 0.46697182759844064,
+     "folds": {
+      "DP1.10022.001.bet_fielddata": {
+       "acc": 0.29411764705882354,
+       "aurc": 0.6639086211750571,
+       "brier": 0.5595872609761146,
+       "class_counts": {
+        "0": 12,
+        "1": 5
+       },
+       "cov@10%": 0.0,
+       "cov@5%": 0.0,
+       "ece": 0.46697182759844064,
+       "levels": [
+        "L1"
+       ],
+       "macro_f1": 0.27142857142857146,
+       "mean_p_true": 0.4469712982998679,
+       "n": 17,
+       "n_neg": 5,
+       "nll": 0.7533465068204767
+      }
+     },
+     "levels": [
+      "L1"
+     ],
+     "loco": true,
+     "macro_f1": 0.27142857142857146,
+     "masked": false,
+     "mean_p_true": 0.4469712982998679,
+     "ms_per_decision": 40.4,
+     "n": 17,
+     "n_folds": 1,
+     "n_neg": 5,
+     "nll": 0.7533465068204767,
+     "prompts": 196,
+     "seconds": 3.96,
+     "skipped_folds": {
+      "DP1.10003.001.brd_countdata": "insufficient_heldout_per_class {0: 8, 1: 4}",
+      "DP1.10003.001.brd_perpoint": "insufficient_train_per_class {0: 54, 1: 24}",
+      "DP1.10022.001.bet_archivepooling": "insufficient_heldout_per_class {0: 5, 1: 1}",
+      "DP1.10022.001.bet_expertTaxonomistIDProcessed": "insufficient_train_per_class {0: 50, 1: 27}",
+      "DP1.10022.001.bet_parataxonomistID": "insufficient_heldout_per_class {0: 7, 1: 3}",
+      "DP1.10022.001.bet_sorting": "insufficient_heldout_per_class {0: 9, 1: 3}"
+     }
+    },
+    "raw": {
+     "acc": 0.37755102040816324,
+     "aurc": 0.6965025369342122,
+     "brier": 1.0618441959401113,
+     "class_counts": {
+      "0": 63,
+      "1": 35
+     },
+     "cov@10%": 0.0,
+     "cov@5%": 0.0,
+     "ece": 0.5165064103322032,
+     "flip": null,
+     "levels": [
+      "raw"
+     ],
+     "loco": false,
+     "macro_f1": 0.36261861605714896,
+     "masked": false,
+     "mean_p_true": 0.23701973024678896,
+     "missing_labels": 0,
+     "ms_per_decision": 46.8,
+     "n": 98,
+     "n_neg": 35,
+     "nll": 2.7423408484292655,
+     "prompts": 98,
+     "seconds": 4.59
+    }
+   },
+   "class_counts": {
+    "0": 63,
+    "1": 35
+   },
+   "license": "NEON data CC BY 4.0 (DP1.10003.001, DP1.10022.001, RELEASE-2026); labels are agreement between four agentic models",
+   "loco": true,
+   "n_items": 98,
+   "notes": "98 labelled states from the eval; class counts {0: 63, 1: 35}",
+   "question_id": "column.annotate",
+   "source": "neon-avu-eval/results/validated.json",
+   "task": "neon_annotate"
+  },
+  "neon_aspect": {
+   "cells": {
+    "L0": {
+     "acc": 0.5833333333333334,
+     "aurc": 0.3306348184269403,
+     "brier": 0.7364674746182991,
+     "class_counts": {
+      "0": 12,
+      "1": 10,
+      "2": 18,
+      "3": 11,
+      "4": 6,
+      "5": 3
+     },
+     "cov@10%": 0.0,
+     "cov@5%": 0.0,
+     "ece": 0.37275980922241303,
+     "flip": 0.2833333333333333,
+     "levels": [
+      "L0"
+     ],
+     "loco": false,
+     "macro_f1": 0.35210164835164837,
+     "masked": false,
+     "mean_p_true": null,
+     "missing_labels": 19,
+     "ms_per_decision": 242.0,
+     "n": 60,
+     "n_neg": 0,
+     "nll": 3.4469752569056054,
+     "prompts": 444,
+     "seconds": 14.52
+    },
+    "L1": {
+     "acc": 0.6,
+     "aurc": 0.32314156681551753,
+     "brier": 0.5523645328014136,
+     "class_counts": {
+      "0": 12,
+      "1": 10,
+      "2": 18,
+      "3": 11,
+      "4": 6,
+      "5": 3
+     },
+     "cov@10%": 0.016666666666666666,
+     "cov@5%": 0.016666666666666666,
+     "ece": 0.18117908753717632,
+     "folds": {
+      "DP1.10003.001.brd_countdata": {
+       "acc": 0.8333333333333334,
+       "aurc": 0.013888888888888883,
+       "brier": 0.1769540537152399,
+       "class_counts": {
+        "0": 1,
+        "1": 1,
+        "2": 1,
+        "3": 3
+       },
+       "cov@10%": 0.8333333333333334,
+       "cov@5%": 0.8333333333333334,
+       "ece": 0.24143042603081827,
+       "levels": [
+        "L0"
+       ],
+       "macro_f1": 0.6,
+       "mean_p_true": null,
+       "n": 6,
+       "n_neg": 0,
+       "nll": 0.44721824026998425
+      },
+      "DP1.10003.001.brd_perpoint": {
+       "acc": 0.7777777777777778,
+       "aurc": 0.1615520282186949,
+       "brier": 0.38086343402274014,
+       "class_counts": {
+        "1": 3,
+        "2": 1,
+        "3": 4,
+        "4": 1
+       },
+       "cov@10%": 0.2222222222222222,
+       "cov@5%": 0.2222222222222222,
+       "ece": 0.3948446415314576,
+       "levels": [
+        "L0"
+       ],
+       "macro_f1": 0.5377777777777778,
+       "mean_p_true": null,
+       "n": 9,
+       "n_neg": 0,
+       "nll": 0.7746844012819717
+      },
+      "DP1.10022.001.bet_archivepooling": {
+       "acc": 0.6,
+       "aurc": 0.4066666666666667,
+       "brier": 0.6423604399405638,
+       "class_counts": {
+        "0": 1,
+        "1": 1,
+        "2": 2,
+        "5": 1
+       },
+       "cov@10%": 0.0,
+       "cov@5%": 0.0,
+       "ece": 0.49672077664484915,
+       "levels": [
+        "L0"
+       ],
+       "macro_f1": 0.4666666666666666,
+       "mean_p_true": null,
+       "n": 5,
+       "n_neg": 0,
+       "nll": 1.4052943849031727
+      },
+      "DP1.10022.001.bet_expertTaxonomistIDProcessed": {
+       "acc": 0.46153846153846156,
+       "aurc": 0.4356506741122126,
+       "brier": 0.7374198168756398,
+       "class_counts": {
+        "0": 6,
+        "1": 1,
+        "2": 3,
+        "3": 2,
+        "5": 1
+       },
+       "cov@10%": 0.07692307692307693,
+       "cov@5%": 0.07692307692307693,
+       "ece": 0.4989358808693324,
+       "levels": [
+        "L0"
+       ],
+       "macro_f1": 0.13186813186813187,
+       "mean_p_true": null,
+       "n": 13,
+       "n_neg": 0,
+       "nll": 1.686718931623041
+      },
+      "DP1.10022.001.bet_fielddata": {
+       "acc": 0.36363636363636365,
+       "aurc": 0.4517250426341336,
+       "brier": 0.7975406813081721,
+       "class_counts": {
+        "1": 2,
+        "2": 5,
+        "4": 4
+       },
+       "cov@10%": 0.09090909090909091,
+       "cov@5%": 0.09090909090909091,
+       "ece": 0.481176455264262,
+       "levels": [
+        "L0"
+       ],
+       "macro_f1": 0.2222222222222222,
+       "mean_p_true": null,
+       "n": 11,
+       "n_neg": 0,
+       "nll": 1.5373318113073149
+      },
+      "DP1.10022.001.bet_parataxonomistID": {
+       "acc": 0.5714285714285714,
+       "aurc": 0.19013605442176873,
+       "brier": 0.5293787186988095,
+       "class_counts": {
+        "0": 2,
+        "1": 1,
+        "2": 1,
+        "3": 1,
+        "4": 1,
+        "5": 1
+       },
+       "cov@10%": 0.2857142857142857,
+       "cov@5%": 0.2857142857142857,
+       "ece": 0.4083265315581026,
+       "levels": [
+        "L0"
+       ],
+       "macro_f1": 0.3333333333333333,
+       "mean_p_true": null,
+       "n": 7,
+       "n_neg": 0,
+       "nll": 1.0635360528006967
+      },
+      "DP1.10022.001.bet_sorting": {
+       "acc": 0.7777777777777778,
+       "aurc": 0.06062610229276896,
+       "brier": 0.37505759946900186,
+       "class_counts": {
+        "0": 2,
+        "1": 1,
+        "2": 5,
+        "3": 1
+       },
+       "cov@10%": 0.5555555555555556,
+       "cov@5%": 0.5555555555555556,
+       "ece": 0.3429570841704601,
+       "levels": [
+        "L0"
+       ],
+       "macro_f1": 0.5111111111111111,
+       "mean_p_true": null,
+       "n": 9,
+       "n_neg": 0,
+       "nll": 0.8896727971323847
+      }
+     },
+     "levels": [
+      "L0"
+     ],
+     "loco": true,
+     "macro_f1": 0.35883699633699634,
+     "masked": false,
+     "mean_p_true": null,
+     "ms_per_decision": 718.0,
+     "n": 60,
+     "n_folds": 7,
+     "n_neg": 0,
+     "nll": 1.182862409282498,
+     "prompts": 1680,
+     "seconds": 43.08,
+     "skipped_folds": {}
+    },
+    "raw": {
+     "acc": 0.6,
+     "aurc": 0.3248698364208246,
+     "brier": 0.7753491733222275,
+     "class_counts": {
+      "0": 12,
+      "1": 10,
+      "2": 18,
+      "3": 11,
+      "4": 6,
+      "5": 3
+     },
+     "cov@10%": 0.0,
+     "cov@5%": 0.0,
+     "ece": 0.375858724353635,
+     "flip": 0.43333333333333335,
+     "levels": [
+      "raw"
+     ],
+     "loco": false,
+     "macro_f1": 0.44065016103059584,
+     "masked": false,
+     "mean_p_true": null,
+     "missing_labels": 7,
+     "ms_per_decision": 83.2,
+     "n": 60,
+     "n_neg": 0,
+     "nll": 5.721320278306117,
+     "prompts": 120,
+     "seconds": 4.99
+    }
+   },
+   "class_counts": {
+    "0": 12,
+    "1": 10,
+    "2": 18,
+    "3": 11,
+    "4": 6,
+    "5": 3
+   },
+   "license": "NEON data CC BY 4.0 (DP1.10003.001, DP1.10022.001, RELEASE-2026); labels are agreement between four agentic models",
+   "loco": true,
+   "n_items": 60,
+   "notes": "60 labelled states from the eval; class counts {3: 11, 0: 12, 4: 6, 1: 10, 2: 18, 5: 3}",
+   "question_id": "column.aspect",
+   "source": "neon-avu-eval/results/validated.json",
+   "task": "neon_aspect"
+  },
+  "neon_keep_avu": {
+   "cells": {
+    "L0": {
+     "acc": 0.8945686900958466,
+     "aurc": 0.02424010102826612,
+     "brier": 0.16047809410688854,
+     "class_counts": {
+      "0": 302,
+      "1": 11
+     },
+     "cov@10%": 0.9744408945686901,
+     "cov@5%": 0.7859424920127795,
+     "ece": 0.04356699696073364,
+     "flip": 0.3226837060702875,
+     "levels": [
+      "L0"
+     ],
+     "loco": false,
+     "macro_f1": 0.6204387608863411,
+     "masked": false,
+     "mean_p_true": 0.8152752339656714,
+     "missing_labels": 0,
+     "ms_per_decision": 178.4,
+     "n": 313,
+     "n_neg": 11,
+     "nll": 0.25905776140907644,
+     "prompts": 626,
+     "seconds": 55.84
+    },
+    "L1": {
+     "not_applicable": true,
+     "reason": "every fold skipped",
+     "skipped": {
+      "DP1.10003.001.brd_countdata": "insufficient_train_per_class {0: 263, 1: 11}",
+      "DP1.10003.001.brd_perpoint": "insufficient_train_per_class {0: 255, 1: 11}",
+      "DP1.10022.001.bet_archivepooling": "insufficient_train_per_class {0: 267, 1: 11}",
+      "DP1.10022.001.bet_expertTaxonomistIDProcessed": "insufficient_train_per_class {0: 249, 1: 11}",
+      "DP1.10022.001.bet_fielddata": "insufficient_train_per_class {0: 248, 1: 6}",
+      "DP1.10022.001.bet_parataxonomistID": "insufficient_train_per_class {0: 262, 1: 11}",
+      "DP1.10022.001.bet_sorting": "insufficient_train_per_class {0: 268, 1: 5}"
+     }
+    },
+    "raw": {
+     "acc": 0.9648562300319489,
+     "aurc": 0.007234124846436896,
+     "brier": 0.06430203645969727,
+     "class_counts": {
+      "0": 302,
+      "1": 11
+     },
+     "cov@10%": 1.0,
+     "cov@5%": 1.0,
+     "ece": 0.025261585336860962,
+     "flip": null,
+     "levels": [
+      "raw"
+     ],
+     "loco": false,
+     "macro_f1": 0.49105691056910566,
+     "masked": false,
+     "mean_p_true": 0.9893316072495386,
+     "missing_labels": 0,
+     "ms_per_decision": 171.9,
+     "n": 313,
+     "n_neg": 11,
+     "nll": 0.15937210181334252,
+     "prompts": 313,
+     "seconds": 53.8
+    }
+   },
+   "class_counts": {
+    "0": 302,
+    "1": 11
+   },
+   "license": "NEON data CC BY 4.0 (DP1.10003.001, DP1.10022.001, RELEASE-2026); labels are agreement between four agentic models",
+   "loco": true,
+   "n_items": 313,
+   "notes": "313 labelled states from the eval; class counts {0: 302, 1: 11}",
+   "question_id": "avu.keep",
+   "source": "neon-avu-eval/results/validated.json",
+   "task": "neon_keep_avu"
+  },
+  "neon_ontology_fits": {
+   "cells": {
+    "L0": {
+     "acc": 0.47368421052631576,
+     "aurc": 0.38375114268952615,
+     "brier": 0.8677938951940518,
+     "class_counts": {
+      "0": 76,
+      "1": 114
+     },
+     "cov@10%": 0.11578947368421053,
+     "cov@5%": 0.031578947368421054,
+     "ece": 0.41722238622833807,
+     "flip": 0.2894736842105263,
+     "levels": [
+      "L0"
+     ],
+     "loco": false,
+     "macro_f1": 0.44385903290012874,
+     "masked": false,
+     "mean_p_true": 0.8008036925600445,
+     "missing_labels": 0,
+     "ms_per_decision": 47.6,
+     "n": 190,
+     "n_neg": 114,
+     "nll": 1.8216413265749254,
+     "prompts": 380,
+     "seconds": 9.05
+    },
+    "L1": {
+     "acc": 0.45789473684210524,
+     "aurc": 0.38736687490340815,
+     "brier": 0.4940456901772671,
+     "class_counts": {
+      "0": 76,
+      "1": 114
+     },
+     "cov@10%": 0.10526315789473684,
+     "cov@5%": 0.06842105263157895,
+     "ece": 0.18242120018208824,
+     "folds": {
+      "DP1.10003.001.brd_countdata": {
+       "acc": 0.3333333333333333,
+       "aurc": 0.477472363623403,
+       "brier": 0.512900348743259,
+       "class_counts": {
+        "0": 7,
+        "1": 14
+       },
+       "cov@10%": 0.09523809523809523,
+       "cov@5%": 0.09523809523809523,
+       "ece": 0.45902680457221506,
+       "levels": [
+        "L1"
+       ],
+       "macro_f1": 0.2932692307692308,
+       "mean_p_true": 0.5440157084134162,
+       "n": 21,
+       "n_neg": 14,
+       "nll": 0.7059176996837553
+      },
+      "DP1.10003.001.brd_perpoint": {
+       "acc": 0.5555555555555556,
+       "aurc": 0.33060485981067483,
+       "brier": 0.4827452292682847,
+       "class_counts": {
+        "0": 12,
+        "1": 15
+       },
+       "cov@10%": 0.1111111111111111,
+       "cov@5%": 0.1111111111111111,
+       "ece": 0.06975802349611741,
+       "levels": [
+        "L1"
+       ],
+       "macro_f1": 0.5397727272727273,
+       "mean_p_true": 0.526033352525367,
+       "n": 27,
+       "n_neg": 15,
+       "nll": 0.6755733194311178
+      },
+      "DP1.10022.001.bet_archivepooling": {
+       "acc": 0.47058823529411764,
+       "aurc": 0.41570960277707686,
+       "brier": 0.49335543653006786,
+       "class_counts": {
+        "0": 7,
+        "1": 10
+       },
+       "cov@10%": 0.0,
+       "cov@5%": 0.0,
+       "ece": 0.43567409972874377,
+       "levels": [
+        "L1"
+       ],
+       "macro_f1": 0.43956043956043955,
+       "mean_p_true": 0.5375207922909075,
+       "n": 17,
+       "n_neg": 10,
+       "nll": 0.6864412313642971
+      },
+      "DP1.10022.001.bet_expertTaxonomistIDProcessed": {
+       "acc": 0.4318181818181818,
+       "aurc": 0.36627023006139453,
+       "brier": 0.510119612924421,
+       "class_counts": {
+        "0": 14,
+        "1": 30
+       },
+       "cov@10%": 0.18181818181818182,
+       "cov@5%": 0.18181818181818182,
+       "ece": 0.31705754060835334,
+       "levels": [
+        "L1"
+       ],
+       "macro_f1": 0.4170641229464759,
+       "mean_p_true": 0.5715887335023884,
+       "n": 44,
+       "n_neg": 30,
+       "nll": 0.7023745387238853
+      },
+      "DP1.10022.001.bet_fielddata": {
+       "acc": 0.4642857142857143,
+       "aurc": 0.4319882347225001,
+       "brier": 0.5003130064071454,
+       "class_counts": {
+        "0": 12,
+        "1": 16
+       },
+       "cov@10%": 0.0,
+       "cov@5%": 0.0,
+       "ece": 0.22924896599790376,
+       "levels": [
+        "L1"
+       ],
+       "macro_f1": 0.44664031620553357,
+       "mean_p_true": 0.5389360298013595,
+       "n": 28,
+       "n_neg": 16,
+       "nll": 0.6933244781767448
+      },
+      "DP1.10022.001.bet_parataxonomistID": {
+       "acc": 0.47619047619047616,
+       "aurc": 0.284804875207352,
+       "brier": 0.46044787897045664,
+       "class_counts": {
+        "0": 8,
+        "1": 13
+       },
+       "cov@10%": 0.2857142857142857,
+       "cov@5%": 0.2857142857142857,
+       "ece": 0.28973700445269235,
+       "levels": [
+        "L1"
+       ],
+       "macro_f1": 0.4564705882352942,
+       "mean_p_true": 0.5366804295261327,
+       "n": 21,
+       "n_neg": 13,
+       "nll": 0.6522166815047111
+      },
+      "DP1.10022.001.bet_sorting": {
+       "acc": 0.46875,
+       "aurc": 0.3337614543360814,
+       "brier": 0.4860367997613525,
+       "class_counts": {
+        "0": 16,
+        "1": 16
+       },
+       "cov@10%": 0.125,
+       "cov@5%": 0.125,
+       "ece": 0.2940610495218277,
+       "levels": [
+        "L1"
+       ],
+       "macro_f1": 0.39756367663344405,
+       "mean_p_true": 0.5475236291145824,
+       "n": 32,
+       "n_neg": 16,
+       "nll": 0.6788198290990405
+      }
+     },
+     "levels": [
+      "L1"
+     ],
+     "loco": true,
+     "macro_f1": 0.4314186931636596,
+     "masked": false,
+     "mean_p_true": 0.5462960111793193,
+     "ms_per_decision": 310.7,
+     "n": 190,
+     "n_folds": 7,
+     "n_neg": 114,
+     "nll": 0.6866873799303166,
+     "prompts": 2660,
+     "seconds": 59.04,
+     "skipped_folds": {}
+    },
+    "raw": {
+     "acc": 0.4105263157894737,
+     "aurc": 0.43616349948163013,
+     "brier": 1.1400092990382036,
+     "class_counts": {
+      "0": 76,
+      "1": 114
+     },
+     "cov@10%": 0.06315789473684211,
+     "cov@5%": 0.04736842105263158,
+     "ece": 0.5745427548906047,
+     "flip": null,
+     "levels": [
+      "raw"
+     ],
+     "loco": false,
+     "macro_f1": 0.3051201671891327,
+     "masked": false,
+     "mean_p_true": 0.9774441682867605,
+     "missing_labels": 0,
+     "ms_per_decision": 47.4,
+     "n": 190,
+     "n_neg": 114,
+     "nll": 4.089317432108173,
+     "prompts": 190,
+     "seconds": 9.01
+    }
+   },
+   "class_counts": {
+    "0": 76,
+    "1": 114
+   },
+   "license": "NEON data CC BY 4.0 (DP1.10003.001, DP1.10022.001, RELEASE-2026); labels are agreement between four agentic models",
+   "loco": true,
+   "n_items": 190,
+   "notes": "190 labelled states from the eval; class counts {0: 76, 1: 114}",
+   "question_id": "column.ontology_fits",
+   "source": "neon-avu-eval/results/validated.json",
+   "task": "neon_ontology_fits"
+  },
+  "neon_term_choice26": {
+   "cells": {
+    "L0": {
+     "acc": 0.20454545454545456,
+     "aurc": 0.8737407069469155,
+     "brier": 1.4599349961329111,
+     "class_counts": {
+      "0": 16,
+      "1": 14,
+      "2": 5,
+      "3": 1,
+      "4": 4,
+      "5": 2,
+      "6": 2
+     },
+     "cov@10%": 0.0,
+     "cov@5%": 0.0,
+     "ece": 0.6886749696087038,
+     "flip": 0.3431277056277056,
+     "levels": [
+      "L0"
+     ],
+     "loco": false,
+     "macro_f1": 0.07612179487179487,
+     "masked": false,
+     "mean_p_true": null,
+     "missing_labels": 0,
+     "ms_per_decision": 354.5,
+     "n": 44,
+     "n_neg": 28,
+     "nll": 7.446427579191319,
+     "prompts": 152,
+     "seconds": 15.6
+    },
+    "L1": {
+     "not_applicable": true,
+     "reason": "task supports ('raw', 'L0')"
+    },
+    "raw": {
+     "acc": 0.22727272727272727,
+     "aurc": 0.7666273692919768,
+     "brier": 1.442556033974325,
+     "class_counts": {
+      "0": 16,
+      "1": 14,
+      "2": 5,
+      "3": 1,
+      "4": 4,
+      "5": 2,
+      "6": 2
+     },
+     "cov@10%": 0.0,
+     "cov@5%": 0.0,
+     "ece": 0.6893869038725814,
+     "flip": null,
+     "levels": [
+      "raw"
+     ],
+     "loco": false,
+     "macro_f1": 0.08021723646723647,
+     "masked": false,
+     "mean_p_true": null,
+     "missing_labels": 0,
+     "ms_per_decision": 151.6,
+     "n": 44,
+     "n_neg": 28,
+     "nll": 8.6307791125364,
+     "prompts": 44,
+     "seconds": 6.67
+    }
+   },
+   "class_counts": {
+    "0": 16,
+    "1": 14,
+    "2": 5,
+    "3": 1,
+    "4": 4,
+    "5": 2,
+    "6": 2
+   },
+   "license": "NEON data CC BY 4.0 (DP1.10003.001, DP1.10022.001, RELEASE-2026); labels are agreement between four agentic models",
+   "loco": true,
+   "n_items": 44,
+   "notes": "control: one choice per (card, column); a new key per item, raw/L0 only",
+   "question_id": "term.fits",
+   "source": "neon-avu-eval/results/validated.json",
+   "task": "neon_term_choice26"
+  },
+  "neon_term_fits": {
+   "cells": {
+    "L0": {
+     "acc": 0.6105263157894737,
+     "aurc": 0.2949665461236948,
+     "brier": 0.6049575312351735,
+     "class_counts": {
+      "0": 86,
+      "1": 199
+     },
+     "cov@10%": 0.04912280701754386,
+     "cov@5%": 0.007017543859649123,
+     "ece": 0.26221083023840597,
+     "flip": 0.3929824561403509,
+     "levels": [
+      "L0"
+     ],
+     "loco": false,
+     "macro_f1": 0.5734740929498847,
+     "masked": false,
+     "mean_p_true": 0.43125275482131986,
+     "missing_labels": 0,
+     "ms_per_decision": 126.5,
+     "n": 285,
+     "n_neg": 199,
+     "nll": 1.1642726014202662,
+     "prompts": 570,
+     "seconds": 36.04
+    },
+    "L1": {
+     "acc": 0.6210526315789474,
+     "aurc": 0.2996953554016354,
+     "brier": 0.45878619637107654,
+     "class_counts": {
+      "0": 86,
+      "1": 199
+     },
+     "cov@10%": 0.042105263157894736,
+     "cov@5%": 0.007017543859649123,
+     "ece": 0.07165511783511103,
+     "folds": {
+      "DP1.10003.001.brd_countdata": {
+       "acc": 0.7567567567567568,
+       "aurc": 0.198907095515986,
+       "brier": 0.41132603022309855,
+       "class_counts": {
+        "0": 11,
+        "1": 26
+       },
+       "cov@10%": 0.13513513513513514,
+       "cov@5%": 0.13513513513513514,
+       "ece": 0.24931519145066014,
+       "levels": [
+        "L1"
+       ],
+       "macro_f1": 0.6813397129186602,
+       "mean_p_true": 0.43362446769970436,
+       "n": 37,
+       "n_neg": 26,
+       "nll": 0.5998573279817415
+      },
+      "DP1.10003.001.brd_perpoint": {
+       "acc": 0.625,
+       "aurc": 0.2554599683853403,
+       "brier": 0.43079252337662466,
+       "class_counts": {
+        "0": 13,
+        "1": 27
+       },
+       "cov@10%": 0.325,
+       "cov@5%": 0.0,
+       "ece": 0.24234874036524995,
+       "levels": [
+        "L1"
+       ],
+       "macro_f1": 0.6050032916392363,
+       "mean_p_true": 0.4863786229457057,
+       "n": 40,
+       "n_neg": 27,
+       "nll": 0.6225589360898182
+      },
+      "DP1.10022.001.bet_archivepooling": {
+       "acc": 0.6097560975609756,
+       "aurc": 0.34965254966226156,
+       "brier": 0.4758264073016124,
+       "class_counts": {
+        "0": 11,
+        "1": 30
+       },
+       "cov@10%": 0.024390243902439025,
+       "cov@5%": 0.024390243902439025,
+       "ece": 0.21312884118735576,
+       "levels": [
+        "L1"
+       ],
+       "macro_f1": 0.5980392156862745,
+       "mean_p_true": 0.49459745722242543,
+       "n": 41,
+       "n_neg": 30,
+       "nll": 0.6685147058562897
+      },
+      "DP1.10022.001.bet_expertTaxonomistIDProcessed": {
+       "acc": 0.5208333333333334,
+       "aurc": 0.4145377929942321,
+       "brier": 0.5272461875999875,
+       "class_counts": {
+        "0": 17,
+        "1": 31
+       },
+       "cov@10%": 0.041666666666666664,
+       "cov@5%": 0.041666666666666664,
+       "ece": 0.22608579150052344,
+       "levels": [
+        "L1"
+       ],
+       "macro_f1": 0.515577007459412,
+       "mean_p_true": 0.5248874007272551,
+       "n": 48,
+       "n_neg": 31,
+       "nll": 0.7240268791246066
+      },
+      "DP1.10022.001.bet_fielddata": {
+       "acc": 0.6444444444444445,
+       "aurc": 0.23251537089739902,
+       "brier": 0.4348907454856222,
+       "class_counts": {
+        "0": 12,
+        "1": 33
+       },
+       "cov@10%": 0.2222222222222222,
+       "cov@5%": 0.1111111111111111,
+       "ece": 0.21129767008547112,
+       "levels": [
+        "L1"
+       ],
+       "macro_f1": 0.5852534562211982,
+       "mean_p_true": 0.4492039005866273,
+       "n": 45,
+       "n_neg": 33,
+       "nll": 0.6221850974739556
+      },
+      "DP1.10022.001.bet_parataxonomistID": {
+       "acc": 0.6363636363636364,
+       "aurc": 0.24240603212349693,
+       "brier": 0.44169780613478354,
+       "class_counts": {
+        "0": 12,
+        "1": 21
+       },
+       "cov@10%": 0.18181818181818182,
+       "cov@5%": 0.18181818181818182,
+       "ece": 0.2672709118570193,
+       "levels": [
+        "L1"
+       ],
+       "macro_f1": 0.6278195488721805,
+       "mean_p_true": 0.4927441584726747,
+       "n": 33,
+       "n_neg": 21,
+       "nll": 0.6313533684222911
+      },
+      "DP1.10022.001.bet_sorting": {
+       "acc": 0.5853658536585366,
+       "aurc": 0.33061651699574984,
+       "brier": 0.4717192941212391,
+       "class_counts": {
+        "0": 10,
+        "1": 31
+       },
+       "cov@10%": 0.07317073170731707,
+       "cov@5%": 0.07317073170731707,
+       "ece": 0.2418235873816569,
+       "levels": [
+        "L1"
+       ],
+       "macro_f1": 0.5108771929824562,
+       "mean_p_true": 0.4594630718873855,
+       "n": 41,
+       "n_neg": 31,
+       "nll": 0.6610787341613082
+      }
+     },
+     "levels": [
+      "L1"
+     ],
+     "loco": true,
+     "macro_f1": 0.5912133446663833,
+     "masked": false,
+     "mean_p_true": 0.47819319265657645,
+     "ms_per_decision": 728.9,
+     "n": 285,
+     "n_folds": 7,
+     "n_neg": 199,
+     "nll": 0.6498129486381873,
+     "prompts": 3990,
+     "seconds": 207.74,
+     "skipped_folds": {}
+    },
+    "raw": {
+     "acc": 0.5017543859649123,
+     "aurc": 0.4332803619080569,
+     "brier": 0.7803646772619981,
+     "class_counts": {
+      "0": 86,
+      "1": 199
+     },
+     "cov@10%": 0.0035087719298245615,
+     "cov@5%": 0.0035087719298245615,
+     "ece": 0.3721417993189583,
+     "flip": null,
+     "levels": [
+      "raw"
+     ],
+     "loco": false,
+     "macro_f1": 0.5016991725768322,
+     "masked": false,
+     "mean_p_true": 0.647214820393918,
+     "missing_labels": 0,
+     "ms_per_decision": 100.6,
+     "n": 285,
+     "n_neg": 199,
+     "nll": 1.8001630764102572,
+     "prompts": 285,
+     "seconds": 28.68
+    }
+   },
+   "class_counts": {
+    "0": 86,
+    "1": 199
+   },
+   "license": "NEON data CC BY 4.0 (DP1.10003.001, DP1.10022.001, RELEASE-2026); labels are agreement between four agentic models",
+   "loco": true,
+   "n_items": 285,
+   "notes": "285 labelled states from the eval; class counts {0: 86, 1: 199}",
+   "question_id": "term.fits",
+   "source": "neon-avu-eval/results/validated.json",
+   "task": "neon_term_fits"
+  },
+  "neon_value_kind": {
+   "cells": {
+    "L0": {
+     "acc": 0.4748201438848921,
+     "aurc": 0.45163103004810046,
+     "brier": 0.9421096614348359,
+     "class_counts": {
+      "0": 133,
+      "1": 62,
+      "2": 24,
+      "3": 59
+     },
+     "cov@10%": 0.0035971223021582736,
+     "cov@5%": 0.0035971223021582736,
+     "ece": 0.46180347005522693,
+     "flip": 0.19424460431654678,
+     "levels": [
+      "L0"
+     ],
+     "loco": false,
+     "macro_f1": 0.20349092760424242,
+     "masked": false,
+     "mean_p_true": null,
+     "missing_labels": 0,
+     "ms_per_decision": 124.2,
+     "n": 278,
+     "n_neg": 0,
+     "nll": 3.2427457311702805,
+     "prompts": 1578,
+     "seconds": 34.52
+    },
+    "L1": {
+     "acc": 0.4676258992805755,
+     "aurc": 0.4603445323873462,
+     "brier": 0.6418853284817191,
+     "class_counts": {
+      "0": 133,
+      "1": 62,
+      "2": 24,
+      "3": 59
+     },
+     "cov@10%": 0.0035971223021582736,
+     "cov@5%": 0.0035971223021582736,
+     "ece": 0.12352828372897297,
+     "folds": {
+      "DP1.10003.001.brd_countdata": {
+       "acc": 0.47058823529411764,
+       "aurc": 0.3740748876060666,
+       "brier": 0.5928943671577948,
+       "class_counts": {
+        "0": 18,
+        "1": 5,
+        "2": 5,
+        "3": 6
+       },
+       "cov@10%": 0.029411764705882353,
+       "cov@5%": 0.029411764705882353,
+       "ece": 0.24203482849680813,
+       "levels": [
+        "L0"
+       ],
+       "macro_f1": 0.24308300395256918,
+       "mean_p_true": null,
+       "n": 34,
+       "n_neg": 0,
+       "nll": 1.0637877401937925
+      },
+      "DP1.10003.001.brd_perpoint": {
+       "acc": 0.39473684210526316,
+       "aurc": 0.49249645013475507,
+       "brier": 0.7185878121256121,
+       "class_counts": {
+        "0": 16,
+        "1": 14,
+        "2": 3,
+        "3": 5
+       },
+       "cov@10%": 0.05263157894736842,
+       "cov@5%": 0.05263157894736842,
+       "ece": 0.2898783669370235,
+       "levels": [
+        "L0"
+       ],
+       "macro_f1": 0.14423076923076922,
+       "mean_p_true": null,
+       "n": 38,
+       "n_neg": 0,
+       "nll": 1.3018981295797025
+      },
+      "DP1.10022.001.bet_archivepooling": {
+       "acc": 0.42857142857142855,
+       "aurc": 0.43109400109236085,
+       "brier": 0.6181765450164038,
+       "class_counts": {
+        "0": 15,
+        "1": 8,
+        "2": 2,
+        "3": 10
+       },
+       "cov@10%": 0.02857142857142857,
+       "cov@5%": 0.02857142857142857,
+       "ece": 0.2787491106403055,
+       "levels": [
+        "L0"
+       ],
+       "macro_f1": 0.15,
+       "mean_p_true": null,
+       "n": 35,
+       "n_neg": 0,
+       "nll": 1.0947427147607087
+      },
+      "DP1.10022.001.bet_expertTaxonomistIDProcessed": {
+       "acc": 0.5,
+       "aurc": 0.4096108126048501,
+       "brier": 0.6082724690482986,
+       "class_counts": {
+        "0": 23,
+        "1": 11,
+        "2": 3,
+        "3": 9
+       },
+       "cov@10%": 0.0,
+       "cov@5%": 0.0,
+       "ece": 0.1917727407430133,
+       "levels": [
+        "L0"
+       ],
+       "macro_f1": 0.24545454545454548,
+       "mean_p_true": null,
+       "n": 46,
+       "n_neg": 0,
+       "nll": 1.0830573455890913
+      },
+      "DP1.10022.001.bet_fielddata": {
+       "acc": 0.40425531914893614,
+       "aurc": 0.581846673094209,
+       "brier": 0.7324630713359714,
+       "class_counts": {
+        "0": 19,
+        "1": 11,
+        "2": 6,
+        "3": 11
+       },
+       "cov@10%": 0.0,
+       "cov@5%": 0.0,
+       "ece": 0.3072032126897908,
+       "levels": [
+        "L0"
+       ],
+       "macro_f1": 0.18087557603686638,
+       "mean_p_true": null,
+       "n": 47,
+       "n_neg": 0,
+       "nll": 1.317704187844215
+      },
+      "DP1.10022.001.bet_parataxonomistID": {
+       "acc": 0.5714285714285714,
+       "aurc": 0.3364582316987369,
+       "brier": 0.5849982315402141,
+       "class_counts": {
+        "0": 20,
+        "1": 8,
+        "2": 2,
+        "3": 5
+       },
+       "cov@10%": 0.14285714285714285,
+       "cov@5%": 0.14285714285714285,
+       "ece": 0.3311568144163396,
+       "levels": [
+        "L0"
+       ],
+       "macro_f1": 0.23480083857442346,
+       "mean_p_true": null,
+       "n": 35,
+       "n_neg": 0,
+       "nll": 1.070764563279621
+      },
+      "DP1.10022.001.bet_sorting": {
+       "acc": 0.5116279069767442,
+       "aurc": 0.34538493069375054,
+       "brier": 0.6153944387275722,
+       "class_counts": {
+        "0": 22,
+        "1": 5,
+        "2": 3,
+        "3": 13
+       },
+       "cov@10%": 0.06976744186046512,
+       "cov@5%": 0.06976744186046512,
+       "ece": 0.22834561134431602,
+       "levels": [
+        "L0"
+       ],
+       "macro_f1": 0.19999999999999998,
+       "mean_p_true": null,
+       "n": 43,
+       "n_neg": 0,
+       "nll": 1.1374611458785768
+      }
+     },
+     "levels": [
+      "L0"
+     ],
+     "loco": true,
+     "macro_f1": 0.20599815947565686,
+     "masked": false,
+     "mean_p_true": null,
+     "ms_per_decision": 377.2,
+     "n": 278,
+     "n_folds": 7,
+     "n_neg": 0,
+     "nll": 1.1586231324481449,
+     "prompts": 4759,
+     "seconds": 104.86,
+     "skipped_folds": {}
+    },
+    "raw": {
+     "acc": 0.5071942446043165,
+     "aurc": 0.4198512136903648,
+     "brier": 0.9365776240718038,
+     "class_counts": {
+      "0": 133,
+      "1": 62,
+      "2": 24,
+      "3": 59
+     },
+     "cov@10%": 0.0035971223021582736,
+     "cov@5%": 0.0035971223021582736,
+     "ece": 0.45660503684548537,
+     "flip": 0.2589928057553957,
+     "levels": [
+      "raw"
+     ],
+     "loco": false,
+     "macro_f1": 0.2547384647724486,
+     "masked": false,
+     "mean_p_true": null,
+     "missing_labels": 0,
+     "ms_per_decision": 73.0,
+     "n": 278,
+     "n_neg": 0,
+     "nll": 4.557347980293555,
+     "prompts": 556,
+     "seconds": 20.29
+    }
+   },
+   "class_counts": {
+    "0": 133,
+    "1": 62,
+    "2": 24,
+    "3": 59
+   },
+   "license": "NEON data CC BY 4.0 (DP1.10003.001, DP1.10022.001, RELEASE-2026); labels are agreement between four agentic models",
+   "loco": true,
+   "n_items": 278,
+   "notes": "278 labelled states from the eval; class counts {0: 133, 1: 62, 3: 59, 2: 24}",
+   "question_id": "avu.value_kind",
+   "source": "neon-avu-eval/results/validated.json",
+   "task": "neon_value_kind"
+  }
+ }
+}
