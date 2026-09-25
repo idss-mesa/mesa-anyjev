@@ -57,6 +57,24 @@ def test_composite_routes_and_checks_label_parity() -> None:
         CompositeBackend(a, c)
 
 
+def test_count_prompts_wraps_every_prefill() -> None:
+    from mesa_anyjev.backends.factory import count_prompts
+
+    class Bare:
+        def next_token_logprobs(self, prompts: list[str], ids: list[list[int]]) -> list[int]:
+            return [0] * len(prompts)
+
+        def hidden_states(self, prompts: list[str], layers: list[int]) -> int:
+            return len(prompts)
+
+    b = count_prompts(Bare())
+    b.next_token_logprobs(["a", "b"], [[1], [1]])
+    b.hidden_states(["c"], [1])
+    assert b.prompts_seen == 3
+    fake = make_backend(load_config(env={}).backend)
+    assert count_prompts(fake) is fake  # FakeBackend already counts
+
+
 def test_gate_skipped_at_l2_but_l2_needs_a_head() -> None:
     cfg = load_config(env={})
     provider = AnyJevProvider(make_backend(cfg.backend), cfg.decider)
@@ -112,6 +130,10 @@ def test_l2_fit_bench_and_bundle(tmp_path: Path) -> None:
     res = run_task(provider, tasks["neon_term_fits"], ("L1", "L2"), loco=True, flip_probe=False)
     assert res["cells"]["L2"]["levels"] == ["L2"] and res["cells"]["L2"]["loco"]
     assert res["cells"]["L1"]["levels"] == ["L1"]
+    # D18: the fit report and the bench cell are the same numbers on the same labels
+    for k in ("acc", "ece", "brier", "cov@5%", "cov@10%", "n"):
+        assert abs(float(rep.loco[k]) - float(res["cells"]["L2"][k])) < 1e-9, k
+    assert "_probs" not in next(iter(manifest["validation"]["term.fits"]["folds"].values()))
     store.close()
 
 

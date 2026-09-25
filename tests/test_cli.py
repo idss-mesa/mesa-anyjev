@@ -89,3 +89,20 @@ def test_learn_bench_artifacts_verbs(tmp_path: Path) -> None:
                 os.environ.pop(k, None)
             else:
                 os.environ[k] = v
+
+
+def test_model_slug_follows_backend_kind() -> None:
+    """Artifacts and results are keyed by the model whose logits/hidden states they came from
+    (D5): the served NVFP4 repo on the gateway, the local repo for hf and composite."""
+    from mesa_anyjev.cli import _model_for
+    from mesa_anyjev.config import load_config
+
+    assert _model_for(load_config(env={})) == "fake"
+    assert (
+        _model_for(load_config(env={"MESA_ANYJEV_BACKEND__KIND": "gateway"}))
+        == "RedHatAI/Qwen3-8B-NVFP4"
+    )
+    assert _model_for(load_config(env={"MESA_ANYJEV_BACKEND__KIND": "hf"})) == "Qwen/Qwen3-8B"
+    assert (
+        _model_for(load_config(env={"MESA_ANYJEV_BACKEND__KIND": "composite"})) == "Qwen/Qwen3-8B"
+    )

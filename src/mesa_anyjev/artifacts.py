@@ -113,10 +113,13 @@ class ArtifactStore:
         if manifest.get("questions_lock_sha") != self.lock_sha:
             raise ValueError("artifact was fit under a different questions.lock.json (DESIGN D7)")
         fitted_on = manifest.get("fitted_on") or {}
+        # composite reads its hidden states from the same local weights hf does, so an
+        # hf-fitted bundle (heads) is valid there; nothing else crosses kinds (D5)
+        compatible = {backend_kind, "hf"} if backend_kind == "composite" else {backend_kind}
         if (
             self.strict
             and backend_kind
-            and fitted_on.get("backend_kind") not in (None, backend_kind)
+            and fitted_on.get("backend_kind") not in (None, *compatible)
         ):
             raise ValueError(
                 f"artifact fit on backend {fitted_on.get('backend_kind')!r} refused for {backend_kind!r} "

@@ -68,8 +68,18 @@ def _make_collaborators(
     provider = AnyJevProvider(
         backend,
         cfg.decider,
-        served_model=cfg.backend.served_model if cfg.backend.kind == "gateway" else None,
+        served_model=cfg.backend.served_model
+        if cfg.backend.kind in ("gateway", "composite")
+        else None,
     )
+    if cfg.backend.kind != "fake":
+        try:
+            loaded = provider.load_bundle(_artifact_store(cfg), backend_kind=cfg.backend.kind)
+        except ValueError as exc:
+            print(f"artifact bundle refused: {exc}", file=sys.stderr)
+        else:
+            if loaded:
+                print(f"loaded {loaded} artifact(s) from the promoted bundle", file=sys.stderr)
     planner: Any
     kind = getattr(args, "planner", None) or cfg.planner.kind
     if kind == "gateway":
@@ -241,11 +251,19 @@ def _artifact_store(cfg: Config) -> Any:
     from mesa_anyjev.questions import lock_sha
 
     return ArtifactStore(
-        cfg.artifacts.dir,
-        cfg.backend.canonical_model if cfg.backend.kind != "fake" else "fake",
-        lock_sha(),
-        strict=cfg.artifacts.strict,
+        cfg.artifacts.dir, _model_for(cfg), lock_sha(), strict=cfg.artifacts.strict
     )
+
+
+def _model_for(cfg: Config) -> str:
+    """The artifact/results model name per backend kind (D5): the served repo id on the
+    gateway, the local repo id for hf and composite (whose logprobs come from the gateway but
+    whose heads read the local hidden states), ``fake`` otherwise."""
+    return {
+        "gateway": cfg.backend.canonical_model,
+        "hf": cfg.backend.hf_model,
+        "composite": cfg.backend.hf_model,
+    }.get(cfg.backend.kind, "fake")
 
 
 def _cmd_learn(args: argparse.Namespace, cfg: Config) -> int:
@@ -346,9 +364,7 @@ def _cmd_bench(args: argparse.Namespace, cfg: Config) -> int:
             )
         )
     date = args.date or datetime.now(tz=UTC).strftime("%Y-%m-%d")
-    slug = (cfg.backend.canonical_model if cfg.backend.kind != "fake" else "fake").replace(
-        "/", "__"
-    )
+    slug = _model_for(cfg).replace("/", "__")
     path = write_results(
         results,
         args.out,

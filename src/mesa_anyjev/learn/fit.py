@@ -87,6 +87,8 @@ def _eval(
     out["prior_frozen"] = all(
         str(d.diagnostics.get("prior_method", "")).startswith("frozen:") for d in decs
     )
+    out["_probs"] = probs.tolist()  # kept for pooling, stripped before the manifest
+    out["_labels"] = list(labels)
     return out
 
 
@@ -201,13 +203,25 @@ def _counts(items: list[tuple[Any, int]]) -> dict[int, int]:
 
 
 def _pool(folds: dict[str, dict[str, Any]]) -> dict[str, Any]:
-    n = sum(int(f["n"]) for f in folds.values())
-    if not n:
+    """Metrics over the union of every fold's held-out decisions (what the bench does).
+    ECE and coverage are not linear in the items, so averaging per-fold values overstates
+    both; that was the M2 disagreement between `learn fit` and the bench."""
+    import numpy as np
+
+    rows: list[list[float]] = []
+    labels: list[int] = []
+    for f in folds.values():
+        rows.extend(f.pop("_probs", []))
+        labels.extend(f.pop("_labels", []))
+    if not labels:
         return {}
-    w = {k: int(f["n"]) / n for k, f in folds.items()}
-    keys = ("acc", "ece", "brier", "nll", "cov@5%", "cov@10%")
-    pooled = {k: float(sum(w[c] * float(folds[c][k]) for c in folds)) for k in keys}
-    pooled["n"] = n
+    probs = np.zeros((len(rows), max(len(r) for r in rows)), dtype=float)
+    for i, row in enumerate(rows):
+        probs[i, : len(row)] = row
+    summary: dict[str, Any] = _metrics.summarize(probs, labels)
+    summary["cov@10%"] = float(_metrics.coverage_at_risk(probs, labels, target=0.10))
+    pooled = {k: float(summary[k]) for k in ("acc", "ece", "brier", "nll", "cov@5%", "cov@10%")}
+    pooled["n"] = len(labels)
     pooled["n_neg"] = sum(int(f.get("n_neg") or 0) for f in folds.values())
     pooled["n_folds"] = len(folds)
     return pooled

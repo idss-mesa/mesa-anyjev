@@ -56,9 +56,41 @@ Every fact names where it was verified. Re-check anything marked `stale_after`.
   carc-fast, raw/L0/L1 with leave-one-card-out): `term.fits` acc 0.502 / 0.611 / 0.621, ECE
   0.372 / 0.262 / 0.072, cov@5% 0.004 / 0.007 / 0.007 (n 285, n_neg 199); `column.aspect`
   (K=8) lost 19 labels to the top-20 readout at L0 (7 at raw); the choice26 control at L0
-  scored 0.205 on 44 items; `avu.keep` fits nothing (11 negatives). The bench's adaptive-shift
-  L1 and `learn fit`'s full-cycle L1 disagree on ECE (0.072 vs 0.231) on the same labels; one
-  fitting path is an M3 task. Thresholds stay proposed-only.
+  scored 0.205 on 44 items; `avu.keep` fits nothing (11 negatives). The bench's L1 and `learn fit`'s
+  L1 disagreed on ECE (0.072 vs 0.231) on the same labels; M3 traced it to `learn fit`
+  averaging per-fold ECE and coverage instead of pooling the held-out decisions (the per-fold
+  values agree exactly), fixed in `learn/fit.py` (D18). Thresholds stay proposed-only.
+- First local bench (2026-09-25, `bench/results/2026-09-25/Qwen__Qwen3-8B.hf.json`,
+  `Qwen/Qwen3-8B` bf16 on the GB10, raw/L0/L1/L2 with leave-one-card-out, 7 tasks, 1 h 50 min
+  while sharing the GPU with the fit and two annotate runs): `term.fits` acc 0.642 / 0.663 /
+  0.656 / 0.765, ECE 0.316 / 0.293 / 0.079 / 0.058, cov@5% 0.074 / 0.077 / 0.049 / 0.088,
+  cov@10% at L2 0.396 (n 285, n_neg 199); `column.ontology_fits` at L2 acc 0.837, ECE 0.078,
+  cov@5% 0.547 (n 190, n_neg 114) against 0.426 / 0.233 / 0.089 at L1; `column.annotate` at
+  L2 acc 0.765 on 5 negatives; choice26 control 0.114 at raw and L0; `avu.keep` fits nothing.
+  Local L0 vs gateway L0 on the same items: term.fits 0.663 vs 0.611 with phrasing-flip 0.119
+  vs 0.393. The `prompts` column is 0 (the local backend had no counter; added after the run).
+  The results file was written under the gateway slug by a CLI bug fixed in the same
+  milestone and renamed by hand; its `environment.model` is `Qwen/Qwen3-8B`.
+- First L2 fit on local weights (2026-09-25, `term.fits`, `Qwen/Qwen3-8B` bf16 on the GB10,
+  the same 285 labelled states as the gateway L1 fit, leave-one-card-out over 7 cards, no
+  fold skipped): LDA head on block 25 of 36; pooled held-out accuracy 0.765, ECE 0.193,
+  Brier 0.327, NLL 0.499, coverage at 5% risk 0.389, at 10% risk 0.491; per fold accuracy
+  0.73 to 0.85 and cov@5% 0.15 to 0.65. Source: `.local/artifacts/Qwen__Qwen3-8B/0190586d/v1/
+  manifest.json` (promoted as CURRENT; local). Against the gateway L1 (acc 0.618, cov@5%
+  0.077) coverage is five times higher, but ECE still misses the 0.10 bar, so `auto`
+  thresholds stay null. The fit ran twice (a CLI bug had keyed the first bundle under the
+  gateway slug) and produced identical numbers.
+- First local run at level auto (2026-09-25, `bet_sorting`, `--backend hf`, static planner,
+  OLS fixtures auto, bundle above loaded): 61 decisions in 25.0 s with no gateway traffic;
+  the same three `term.fits` proposals as the composite run at the same L2 probabilities
+  (0.84, 0.67, 0.68), which is expected since both read the head from the same local weights.
+  Source: `.local/prov-m3.duckdb`.
+- First composite run (2026-09-25, `bet_sorting`, static planner, OLS fixtures auto, level
+  auto, bundle above loaded): gateway logprobs for the L0 questions and the local head for
+  `term.fits`; the sidecar records `backend_kind=composite`, `canonical_model=Qwen/Qwen3-8B`,
+  `served_model=carc-fast`, 26 `term.fits` decisions at L2 and every other question at L0
+  (`column.annotate` 20 rule rows at level none); 34 gateway prompts, 0 missing labels,
+  13.1 s. Numbers from `.local/prov-m3c.duckdb`, not a bench file.
 - Any gateway change (`--max-logprobs`, a pooling instance of the decision model, a
   text-completion alias, direct vLLM ports) is a request to `tredfear`.
 

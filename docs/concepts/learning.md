@@ -57,9 +57,10 @@ adaptive shifts so the artifact freezes the prior it was fitted with.
 hidden state of one block, on a backend that exposes hidden states (`hf`, `composite`, or the
 fake backend in tests); the gateway raises `LevelUnavailable`. Both levels go through one
 fitting path, `learn/fit.py`, which the bench's leave-one-card-out cells now share, so a bench
-L1 or L2 cell and a `learn fit` report on the same labels are the same computation (M2's two
-paths disagreed on ECE, 0.072 against 0.231, because the bench fitted with adaptive shifts
-on and the fitter with them off). L2 needs at least 40 labels and the same per-class fold
+L1 or L2 cell and a `learn fit` report on the same labels are the same computation, and both
+pool the held-out decisions before computing ECE and coverage (M2's two paths disagreed on
+term.fits ECE, 0.072 against 0.231, because the fitter averaged per-fold values of metrics
+that are not linear in the items). L2 needs at least 40 labels and the same per-class fold
 guards; the manifest records the head's block (`layer_abs`), method and, for L1, the
 temperature. At serving time a head answers only its own question key (A1): a fitted
 `term.fits` head is never routed to another yes/no question.

@@ -13,8 +13,8 @@ All notable changes to the mesa-anyjev package. The format follows
   accelerate) loads `Qwen/Qwen3-8B` through AnyJev's `HFBackend`; `doctor --backend hf`
   checks the device, the model's depth and width, single-token labels, answer mass and the
   block loop; `learn fit --level L2` fits closed-form heads with the same leave-one-card-out
-  guards as L1, and the bench's L1/L2 cells share that fitting path (the M2 ECE disagreement
-  is gone); `annotate` and `bench` load the promoted bundle so `--level auto` serves L2 per
+  guards as L1, and the bench's L1/L2 cells share that fitting path and its pooling rule (the
+  M2 ECE disagreement came from the fitter averaging per-fold ECE and coverage); `annotate` and `bench` load the promoted bundle so `--level auto` serves L2 per
   exact question key; the composite backend pairs gateway logprobs with local hidden states
   after asserting label-token parity; `backend.hf_native_triton` (default off) deregisters
   torch's Triton eager overrides so hosts without `Python.h` run the stock aten kernels.

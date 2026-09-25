@@ -72,6 +72,30 @@ def capabilities_of(backend: Any) -> BackendCapabilities:
     return BackendCapabilities(max_choice_k=max_k, hidden_states=hidden, logprob_top_k=None)
 
 
+def count_prompts(backend: Any) -> Any:
+    """Give a backend without a request counter a ``prompts_seen`` total over every prefill
+    (logprobs, hidden states, block-loop hidden states), so runs and bench cells can report
+    prompts for local weights the way they do for the gateway (``requests``)."""
+    if hasattr(backend, "prompts_seen"):
+        return backend
+    backend.prompts_seen = 0
+
+    def _wrap(name: str) -> None:
+        orig = getattr(backend, name, None)
+        if orig is None:
+            return
+
+        def counted(prompts: Any, *args: Any, **kwargs: Any) -> Any:
+            backend.prompts_seen += len(prompts)
+            return orig(prompts, *args, **kwargs)
+
+        setattr(backend, name, counted)
+
+    for name in ("next_token_logprobs", "hidden_states", "hidden_states_to"):
+        _wrap(name)
+    return backend
+
+
 def prepare_torch(cfg: BackendConfig) -> None:
     """Apply process-wide torch settings before local weights load (idempotent)."""
     if cfg.hf_native_triton:
@@ -112,8 +136,13 @@ def make_backend(cfg: BackendConfig, *, fake_content: ContentFn | None = None) -
 
         prepare_torch(cfg)
 
-        return HFBackend(
-            cfg.hf_model, device=cfg.hf_device, dtype=cfg.hf_dtype, batch_size=cfg.hf_batch_size
+        return count_prompts(
+            HFBackend(
+                cfg.hf_model,
+                device=cfg.hf_device,
+                dtype=cfg.hf_dtype,
+                batch_size=cfg.hf_batch_size,
+            )
         )
     if cfg.kind == "composite":
         from anyjev.backends.hf import HFBackend  # the `hf` extra
@@ -135,8 +164,13 @@ def make_backend(cfg: BackendConfig, *, fake_content: ContentFn | None = None) -
             workers=cfg.workers,
             timeout=cfg.timeout,
         )
-        local = HFBackend(
-            cfg.hf_model, device=cfg.hf_device, dtype=cfg.hf_dtype, batch_size=cfg.hf_batch_size
+        local = count_prompts(
+            HFBackend(
+                cfg.hf_model,
+                device=cfg.hf_device,
+                dtype=cfg.hf_dtype,
+                batch_size=cfg.hf_batch_size,
+            )
         )
         return CompositeBackend(gateway, local, max_choice_k=cfg.max_choice_k)
     raise ValueError(f"unknown backend kind {cfg.kind!r}")
