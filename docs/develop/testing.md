@@ -33,3 +33,17 @@ Opt-in tiers are excluded by default and selected with markers and environment v
 Unit tests never touch the network or a GPU. Every question key is pinned by
 `tests/test_questions_lock.py`; every numeric write threshold is checked by
 `tests/test_policy_citations.py`.
+
+## The Postgres and end-to-end tiers
+
+```bash
+docker run -d --rm --name mesa-anyjev-pg -e POSTGRES_PASSWORD=mesa -e POSTGRES_USER=mesa \
+  -e POSTGRES_DB=mesa_anyjev_test -p 127.0.0.1:55432:5432 postgres:16
+MESA_ANYJEV_TEST_PG_DSN=postgresql://mesa:mesa@127.0.0.1:55432/mesa_anyjev_test \
+  uv run pytest -q -m requires_postgres tests/test_provenance_postgres.py
+```
+
+The `e2e` tier (`tests/e2e/test_chooser_harness.py`) spawns the real `mesa-mcp --transport
+stdio` with the copied elicitation broker and lets the chooser answer `mesa_avu_apply_term`'s
+picker. It needs `MESA_E2E_IRODS_ROOT`, iRODS credentials in the environment, the `e2e`
+extra and live EBI OLS; it is skipped otherwise.

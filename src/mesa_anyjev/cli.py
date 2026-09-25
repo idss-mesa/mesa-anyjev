@@ -13,7 +13,6 @@ from typing import Any
 
 from mesa_anyjev import __version__
 from mesa_anyjev.config import Config, load_config
-from mesa_anyjev.policy import DEFAULTS_PATH
 
 EXIT_OK, EXIT_FAIL, EXIT_CONFIG = 0, 1, 2
 
@@ -34,15 +33,72 @@ def _cmd_questions(args: argparse.Namespace, _cfg: Config) -> int:
     return EXIT_OK
 
 
+def _cmd_feedback(args: argparse.Namespace, cfg: Config) -> int:
+    from uuid import UUID
+
+    from mesa_anyjev.provenance.store import open_store
+    from mesa_anyjev.service import DecisionService
+
+    store = open_store(args.provenance or cfg.provenance.dsn)
+    try:
+        service = DecisionService(
+            cfg, collaborators=(None, None, None, None, store)
+        )  # feedback needs no model: candidates and labels come from the sidecar
+        out = service.record_human_pick(
+            UUID(args.group_id),
+            actor=args.actor,
+            chosen_decision_id=UUID(args.decision_id) if args.decision_id else None,
+            action=args.action,
+        )
+    except (KeyError, ValueError) as exc:
+        print(f"feedback: {exc}", file=sys.stderr)
+        return EXIT_FAIL
+    finally:
+        store.close()
+    print(json.dumps(out))
+    return EXIT_OK
+
+
 def _cmd_provenance(args: argparse.Namespace, cfg: Config) -> int:
+    from uuid import UUID
+
     from mesa_anyjev.provenance.migrate import apply_migrations
 
+    dsn = args.dsn or cfg.provenance.dsn
     if args.verb == "migrate":
-        version = apply_migrations(args.dsn or cfg.provenance.dsn, target=args.target)
-        print(f"provenance schema version {version} at {args.dsn or cfg.provenance.dsn}")
+        version = apply_migrations(dsn, target=args.target)
+        print(f"provenance schema version {version} at {dsn}")
         return EXIT_OK
-    print(f"provenance {args.verb}: not implemented until a later milestone", file=sys.stderr)
-    return EXIT_FAIL
+    from mesa_anyjev.provenance.export import export_run, reconcile
+    from mesa_anyjev.provenance.store import open_store
+
+    if not args.run_id:
+        print("provenance export|reconcile need --run-id", file=sys.stderr)
+        return EXIT_CONFIG
+    store = open_store(dsn)
+    try:
+        if args.verb == "export":
+            written = export_run(store, UUID(args.run_id), args.out)
+            for table, path in written.items():
+                print(f"{table:16s} {path}")
+            return EXIT_OK
+        if not args.local_ducklake:
+            print("provenance reconcile needs --local-ducklake <dsn>", file=sys.stderr)
+            return EXIT_CONFIG
+        from mesa_ducklake import DuckLakeClient
+
+        cache = Path(cfg.ducklake.cache_dir).expanduser() if cfg.ducklake.cache_dir else None
+        ducklake = DuckLakeClient(
+            catalog_dsn=args.local_ducklake, irods_session=None, cache_dir=cache, cache_cap_bytes=0
+        )
+        try:
+            fixed = reconcile(store, UUID(args.run_id), ducklake)
+        finally:
+            ducklake.close()
+        print(f"reconciled {fixed} link(s) for run {args.run_id}")
+        return EXIT_OK
+    finally:
+        store.close()
 
 
 def _cmd_doctor(args: argparse.Namespace, cfg: Config) -> int:
@@ -56,64 +112,15 @@ def _cmd_doctor(args: argparse.Namespace, cfg: Config) -> int:
 def _make_collaborators(
     cfg: Config, args: argparse.Namespace, *, store: Any | None = None
 ) -> tuple[Any, Any, Any, Any, Any]:
-    """(provider, planner, ols_layer, policy, store) from config plus flags."""
-    from mesa_anyjev.backends.factory import make_backend
-    from mesa_anyjev.ols import OLSLayer, RecordingOLS
-    from mesa_anyjev.planner.static_planner import StaticPlanner
-    from mesa_anyjev.policy import load_policy
-    from mesa_anyjev.provenance.store import open_store
-    from mesa_anyjev.providers.anyjev_provider import AnyJevProvider
+    """(provider, planner, ols_layer, policy, store) from config plus flags (service.py)."""
+    from mesa_anyjev.service import build_collaborators
 
-    backend = make_backend(cfg.backend)
-    provider = AnyJevProvider(
-        backend,
-        cfg.decider,
-        served_model=cfg.backend.served_model
-        if cfg.backend.kind in ("gateway", "composite")
-        else None,
+    return build_collaborators(
+        cfg,
+        planner_kind=getattr(args, "planner", None),
+        provenance_dsn=getattr(args, "provenance", None),
+        store=store,
     )
-    if cfg.backend.kind != "fake":
-        try:
-            loaded = provider.load_bundle(_artifact_store(cfg), backend_kind=cfg.backend.kind)
-        except ValueError as exc:
-            print(f"artifact bundle refused: {exc}", file=sys.stderr)
-        else:
-            if loaded:
-                print(f"loaded {loaded} artifact(s) from the promoted bundle", file=sys.stderr)
-    planner: Any
-    kind = getattr(args, "planner", None) or cfg.planner.kind
-    if kind == "gateway":
-        from mesa_anyjev.planner.gateway_planner import GatewayPlanner
-
-        planner = GatewayPlanner(
-            cfg.backend.gateway_base_url,
-            cfg.backend.gateway_api_key,
-            cfg.planner.gateway_model,
-            cfg.planner.timeout,
-        )
-    elif kind == "claude":
-        from mesa_anyjev.planner.claude_planner import ClaudePlanner
-
-        planner = ClaudePlanner(cfg.planner)
-    else:
-        planner = StaticPlanner()
-    inner: Any = None
-    if cfg.ols.fixtures != "replay":  # replay is strictly offline; auto/record/off reach EBI OLS
-        from mesa_mcp.ols.client import OLSClient
-
-        inner = OLSClient(cfg.ols.base_url)
-    client: Any = (
-        RecordingOLS(inner, cfg.ols.fixtures_dir, cfg.ols.fixtures)
-        if cfg.ols.fixtures != "off"
-        else inner
-    )
-    ols = OLSLayer(client, max_candidates=cfg.policy.max_candidates)
-    policy = load_policy(
-        cfg.policy.defaults_file if Path(cfg.policy.defaults_file).is_absolute() else DEFAULTS_PATH
-    )
-    if store is None:
-        store = open_store(getattr(args, "provenance", None) or cfg.provenance.dsn)
-    return provider, planner, ols, policy, store
 
 
 def _cmd_plan(args: argparse.Namespace, cfg: Config) -> int:
@@ -256,14 +263,9 @@ def _artifact_store(cfg: Config) -> Any:
 
 
 def _model_for(cfg: Config) -> str:
-    """The artifact/results model name per backend kind (D5): the served repo id on the
-    gateway, the local repo id for hf and composite (whose logprobs come from the gateway but
-    whose heads read the local hidden states), ``fake`` otherwise."""
-    return {
-        "gateway": cfg.backend.canonical_model,
-        "hf": cfg.backend.hf_model,
-        "composite": cfg.backend.hf_model,
-    }.get(cfg.backend.kind, "fake")
+    from mesa_anyjev.service import model_for
+
+    return model_for(cfg)
 
 
 def _cmd_learn(args: argparse.Namespace, cfg: Config) -> int:
@@ -414,6 +416,9 @@ def build_parser() -> argparse.ArgumentParser:
     prov.add_argument("verb", choices=["migrate", "export", "reconcile"])
     prov.add_argument("--dsn", help="duckdb:///path or postgresql://... (default: config)")
     prov.add_argument("--target", type=int, help="apply migrations up to this version")
+    prov.add_argument("--run-id", help="run to export or reconcile")
+    prov.add_argument("--out", default=".mesa/anyjev", help="export directory (export)")
+    prov.add_argument("--local-ducklake", help="DuckLake catalog DSN (reconcile)")
     prov.set_defaults(func=_cmd_provenance)
 
     d = sub.add_parser("doctor", help="what this host can reach")
@@ -452,6 +457,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     an.add_argument("--out", help="write the run in the neon-avu-eval result shape")
     an.set_defaults(func=_cmd_annotate)
+
+    fb = sub.add_parser("feedback", parents=[common], help="record a curator's pick on a group")
+    fb.add_argument("--group-id", required=True)
+    fb.add_argument("--decision-id", help="the chosen candidate; omit with --action reject")
+    fb.add_argument("--action", choices=["pick", "reject", "decline"], default="pick")
+    fb.set_defaults(func=_cmd_feedback)
 
     ap = sub.add_parser(
         "apply",

@@ -131,6 +131,7 @@ class ProvenanceStore(Protocol):
     def run(self, run_id: UUID) -> dict[str, Any] | None: ...
     def decisions(self, run_id: UUID) -> list[dict[str, Any]]: ...
     def groups(self, run_id: UUID) -> list[dict[str, Any]]: ...
+    def group(self, group_id: UUID) -> dict[str, Any] | None: ...
     def links(self, run_id: UUID) -> list[dict[str, Any]]: ...
     def labels_for(
         self, question_key: str, *, min_weight: float = 0.0, exclude_cards: Sequence[str] = ()
@@ -339,6 +340,12 @@ class DuckDBStore:
             "SELECT * FROM mesa_anyjev.decision_groups WHERE run_id = ? ORDER BY ts", [str(run_id)]
         )
 
+    def group(self, group_id: UUID) -> dict[str, Any] | None:
+        rows = self._select(
+            "SELECT * FROM mesa_anyjev.decision_groups WHERE group_id = ?", [str(group_id)]
+        )
+        return rows[0] if rows else None
+
     def decisions(self, run_id: UUID) -> list[dict[str, Any]]:
         return self._select(
             "SELECT * FROM mesa_anyjev.decisions WHERE run_id = ? ORDER BY seq", [str(run_id)]
@@ -391,7 +398,9 @@ def open_store(dsn: str, *, read_only: bool = False) -> ProvenanceStore:
     elif dsn.startswith(("postgresql://", "postgres://")):
         from mesa_anyjev.provenance.store_postgres import PostgresStore  # lazy: psycopg optional
 
-        return cast(ProvenanceStore, PostgresStore(dsn))
+        pg = PostgresStore(dsn)
+        pg.ensure_schema()
+        return cast(ProvenanceStore, pg)
     else:
         raise ValueError(f"unsupported provenance DSN {dsn!r} (duckdb:///... or postgresql://...)")
     store.ensure_schema()

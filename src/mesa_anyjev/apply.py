@@ -110,10 +110,14 @@ def apply(
     try:
         from mesa_ducklake import AvuChange
 
-        project = ducklake.find_project_by_path(_project_root(irods_path, mode))
-        if project is None:
+        project = _find_project(ducklake, irods_path, mode)
+        if project is None and mode == "local":
             project = ducklake.register_project(
                 irods_path=_project_root(irods_path, mode), actor=actor, zone=zone
+            )
+        if project is None:
+            raise LookupError(
+                f"{irods_path} is not inside a MESA-enabled project (mesa_ducklake_init_project first)"
             )
         changes = [
             AvuChange(
@@ -142,6 +146,20 @@ def apply(
         store.set_link_status(written_ids, "mirror_failed", written_at=now)
         store.finish_run(run_id, "partial", write_mode=mode, irods_path=irods_path)
     return result
+
+
+def _find_project(ducklake: Any, irods_path: str, mode: Mode) -> Any | None:
+    """Local mode: the card's parent collection. iRODS mode: the nearest registered ancestor
+    (mesa-mcp's own resolver is private, so walk the public ``find_project_by_path``)."""
+    if mode == "local":
+        return ducklake.find_project_by_path(_project_root(irods_path, mode))
+    parts = irods_path.rstrip("/").split("/")
+    for n in range(len(parts), 1, -1):
+        candidate = "/".join(parts[:n]) or "/"
+        project = ducklake.find_project_by_path(candidate)
+        if project is not None:
+            return project
+    return None
 
 
 def _project_root(irods_path: str, mode: Mode) -> str:

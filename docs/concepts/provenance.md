@@ -41,3 +41,17 @@ curator without a join.
 
 Decisions are never updated; only a link's write status and snapshot id, and a run's status,
 change. Corrections are new rows.
+
+## Postgres and exports
+
+`postgresql://` DSNs use the packaged migration (`migrations/0001_mesa_anyjev.sql`, schema
+`mesa_anyjev`, JSONB, foreign keys, `NULLS NOT DISTINCT` uniqueness) through a psycopg store
+with the same protocol as the DuckDB file; `mesa-anyjev provenance migrate --dsn ...` applies
+it, and the store may share a database with mesa-ducklake's `mesa` schema (D4). The
+`requires_postgres` test tier runs the DuckDB round trip against a real server.
+
+`mesa-anyjev provenance export --run-id <id> --out <project>/.mesa/anyjev` writes `runs`,
+`decisions`, `decision_groups` and `avu_links` as Parquet (never under `.mesa/ducklake/`).
+`provenance reconcile --run-id <id> --local-ducklake <dsn>` repairs links whose snapshot id
+is NULL because the mirror step failed after the iRODS write, by matching the DuckLake
+history rows whose source starts with `mesa-anyjev:` on the exact AVU triple.
