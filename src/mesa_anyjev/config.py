@@ -55,6 +55,10 @@ class BackendConfig(_Section):
     hf_device: str = "cuda"
     hf_dtype: str = "bfloat16"
     hf_batch_size: int = 16
+    hf_native_triton: bool = False
+    """torch>=2.14 routes some eager aten ops through Triton kernels that are compiled against
+    Python.h at first use; on hosts without the CPython headers that compile fails inside the
+    forward pass. Off (default) deregisters the Triton overrides so the stock aten kernels run."""
     # Always 20 on the gateway: allowed_token_ids is dropped and 20 is vLLM's cap (D11).
     logprobs: int = 20
     # Raised only when the doctor measures zero label erasure at a higher K (D11).

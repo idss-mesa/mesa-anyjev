@@ -43,7 +43,7 @@ dependencies = [
 # Tokenizer for the CARC gateway backend (label token ids must match the served checkpoint).
 gateway = ["transformers>=4.53", "tokenizers>=0.20", "huggingface-hub>=0.25"]
 # Local hidden states for L2 on a CUDA host (this GB10 resolves torch 2.14 CUDA 13 wheels).
-hf = ["torch>=2.3", "transformers>=4.53"]
+hf = ["torch>=2.3", "transformers>=4.53", "accelerate>=1.0"]
 # Claude planner and structured-output provider (M2+).
 claude = ["anthropic>=1.0"]
 # Postgres provenance sidecar (production).

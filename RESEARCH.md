@@ -6,8 +6,17 @@ Every fact names where it was verified. Re-check anything marked `stale_after`.
 
 - This workstation (`sparky-1`): NVIDIA GB10, aarch64, 121 GB unified memory, 20 cores, driver
   580.173.02 / CUDA 13.0, Docker 29 (`nvidia-smi`, `free -g`, `nproc`). `uv pip install --dry-run`
-  resolves torch 2.14.0 (CUDA 13 wheels) + transformers 5.17.0 for aarch64 py3.11; the install
-  itself is an M3 task. AnyJev's `HFBackend` already handles the transformers-5 `dtype` kwarg.
+  resolves torch 2.14.0 (CUDA 13 wheels) + transformers 5.17.0 for aarch64 py3.11. Installed
+  in M3 (venv on the system CPython 3.12, `uv sync --all-extras`): `torch 2.14.0+cu130`, CUDA
+  13.0 visible, a bf16 4096x4096 matmul runs; `Qwen/Qwen3-8B` bf16 loads through AnyJev's
+  `HFBackend` in about two minutes from the safetensors cache (16.4 GB resident; `doctor
+  --backend hf` 2026-09-25: `n_layers=36 hidden_size=4096`, labels single-token, probe
+  answer mass 1.000, block loop available). `accelerate` is required by transformers 5 for
+  `device_map`; it is in the `hf` extra. torch 2.14's `torch._native` routes the Qwen3 rotary
+  outer product through a Triton kernel whose driver shim is compiled against `Python.h` on
+  first use; the system Python has no headers (`sudo` needs a password), so the factory
+  deregisters the Triton DSL overrides (`torch._native.registry.deregister_op_overrides(
+  disable_dsl_names="triton")`, DESIGN D19) and the forward pass runs on aten kernels.
 - CARC gateway: LiteLLM (`ghcr.io/berriai/litellm:main-latest`, `drop_params: true`,
   `request_timeout: 600`, no DB, master key only) in front of vLLM 0.21.0 backends; owned by
   account `tredfear` (mesa-nmdid DECISIONS #D28). Reached only over loopback tunnels:

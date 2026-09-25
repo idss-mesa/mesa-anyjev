@@ -24,6 +24,8 @@ summarised at the end.
 | D15 | Serving processes never fit: labels are stored, fitting happens through `learn fit` + `learn promote` (LOCO gate) | accepted |
 | D16 | Hosted Jev (MotherDuck `prompt_jev`) is a third provider for the same questions and lock: level `none`, calibration `typesafe`, egress-gated per project, off by default; it may re-score effective AVUs from the DuckLake history as new sidecar runs | accepted |
 | D17 | Claude-as-teacher labels are not part of 0.1.0 (accuracy ceiling, spend); `label_source 'teacher'` stays allowed in the schema | accepted |
+| D18 | One fitting path for L1 and L2 (`learn/fit.py`: a Decider without adaptive shifts, `calibrate` or `fit_head`) shared by `learn fit` and the bench's leave-one-card-out cells, so a bench cell and a fit report on the same labels are the same computation | accepted |
+| D19 | Local weights load through `HFBackend` with torch's Triton eager overrides deregistered by default (`backend.hf_native_triton=false`): torch 2.14 compiles those kernels against `Python.h` at first use and hosts without CPython headers fail inside the forward pass; the aten fallbacks are the same numerics | accepted |
 
 ## D0. Pinned git dependencies
 

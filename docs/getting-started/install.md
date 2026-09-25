@@ -37,7 +37,7 @@ Python 3.11 or newer. `anyjev`, `mesa-mcp` and `mesa-ducklake` come from pinned 
 | Extra | Adds | When |
 |---|---|---|
 | `gateway` | `transformers` (tokenizer only) | Deciding through the CARC LiteLLM gateway (L0, L1). |
-| `hf` | `torch`, `transformers` | Local hidden states for L2 on a CUDA host. |
+| `hf` | `torch`, `transformers`, `accelerate` | Local hidden states for L2 on a CUDA host ([Local weights](local-weights.md)). |
 | `claude` | `anthropic` | The Claude planner and structured-output provider (M2+). |
 | `pg` | `psycopg` | The Postgres provenance sidecar (production). |
 | `e2e` | `mcp` | The end-to-end test over MCP stdio (M4). |

@@ -138,17 +138,18 @@ class AnyJevProvider:
     ) -> list[DecisionRecord]:
         """``allow_over_cap`` is for the bench's control tasks only: it lets a choice wider than
         the backend can read run anyway so the degradation is measured, never served."""
+        if not states:
+            return []
+        lv = self.resolve_level(question, level)
         if (
             question.kind == "choice"
             and question.k > self.capabilities.max_choice_k
             and not allow_over_cap
+            and lv != "L2"  # a head reads the hidden state, not the top-k logprob list
         ):
             raise CapabilityError(
                 f"{question.id}: K={question.k} exceeds max_choice_k={self.capabilities.max_choice_k}; ask the twin"
             )
-        if not states:
-            return []
-        lv = self.resolve_level(question, level)
         with self.lock:
             before = int(getattr(self.backend, "missing_label_events", 0))
             decisions = self.decider.decide_batch(list(states), question, level=lv)
@@ -166,6 +167,10 @@ class AnyJevProvider:
         )
         pre, suf = render_chat_parts(self.backend.tokenizer, spec)
         return hashlib.sha256((pre + suf).encode("utf-8")).hexdigest()
+
+    def record_from(self, question: Question, state: dict[str, Any], d: Any) -> DecisionRecord:
+        """Convert an ``anyjev.Decision`` (from any Decider on this backend) into a record."""
+        return self._record(question, state, d)
 
     def _record(self, question: Question, state: dict[str, Any], d: Any) -> DecisionRecord:
         probs = [float(p) for p in np.asarray(d.probs, dtype=float).tolist()]
@@ -212,6 +217,21 @@ class AnyJevProvider:
         with self.lock:
             out: dict[str, Any] = self.decider.calibrate(question, list(states), list(labels))
             return out
+
+    def fit_head(
+        self, question: Question, states: Sequence[Any], labels: Sequence[int], **kw: Any
+    ) -> dict[str, Any]:
+        if not self.capabilities.hidden_states:
+            raise LevelUnavailable(f"L2 needs hidden states; backend {self.model} has none")
+        with self.lock:
+            out: dict[str, Any] = self.decider.fit_head(question, list(states), list(labels), **kw)
+            return out
+
+    def load_bundle(self, artifacts: Any, *, backend_kind: str) -> int:
+        """Load the promoted artifact bundle (D5 strict checks live in ArtifactStore)."""
+        with self.lock:
+            n: int = artifacts.load_into(self.decider, backend_kind=backend_kind)
+            return n
 
     def export(self) -> dict[str, Any]:
         out: dict[str, Any] = self.decider.export_artifacts(include_observations=True)

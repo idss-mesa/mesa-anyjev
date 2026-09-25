@@ -9,6 +9,15 @@ All notable changes to the mesa-anyjev package. The format follows
 
 ### Added
 
+- Milestone M3: local L2 on the GB10. The `hf` extra (torch 2.14 CUDA 13, transformers 5,
+  accelerate) loads `Qwen/Qwen3-8B` through AnyJev's `HFBackend`; `doctor --backend hf`
+  checks the device, the model's depth and width, single-token labels, answer mass and the
+  block loop; `learn fit --level L2` fits closed-form heads with the same leave-one-card-out
+  guards as L1, and the bench's L1/L2 cells share that fitting path (the M2 ECE disagreement
+  is gone); `annotate` and `bench` load the promoted bundle so `--level auto` serves L2 per
+  exact question key; the composite backend pairs gateway logprobs with local hidden states
+  after asserting label-token parity; `backend.hf_native_triton` (default off) deregisters
+  torch's Triton eager overrides so hosts without `Python.h` run the stock aten kernels.
 - Milestone M2: labels, bench and L1. `learn ingest` writes the neon-avu-eval silver labels
   with their exact states (OLS term records recorded as fixtures); `bench run` evaluates raw,
   L0 and L1 with leave-one-card-out, option-reversal and phrasing flip probes, coverage at 5%
