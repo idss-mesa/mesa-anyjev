@@ -73,18 +73,15 @@ Every fact names where it was verified. Re-check anything marked `stale_after`.
   milestone and renamed by hand; its `environment.model` is `Qwen/Qwen3-8B`.
 - First L2 fit on local weights (2026-09-25, `term.fits`, `Qwen/Qwen3-8B` bf16 on the GB10,
   the same 285 labelled states as the gateway L1 fit, leave-one-card-out over 7 cards, no
-  fold skipped): LDA head on block 25 of 36; pooled held-out accuracy 0.765, ECE 0.193,
-  Brier 0.327, NLL 0.499, coverage at 5% risk 0.389, at 10% risk 0.491; per fold accuracy
-  0.73 to 0.85 and cov@5% 0.15 to 0.65. Source: `.local/artifacts/Qwen__Qwen3-8B/0190586d/v1/
-  manifest.json` (promoted as CURRENT; local). Against the gateway L1 (acc 0.618, cov@5%
-  0.077) coverage is five times higher, but ECE still misses the 0.10 bar, so `auto`
-  thresholds stay null. The fit ran twice (a CLI bug had keyed the first bundle under the
-  gateway slug) and produced identical numbers.
-- First local run at level auto (2026-09-25, `bet_sorting`, `--backend hf`, static planner,
-  OLS fixtures auto, bundle above loaded): 61 decisions in 25.0 s with no gateway traffic;
-  the same three `term.fits` proposals as the composite run at the same L2 probabilities
-  (0.84, 0.67, 0.68), which is expected since both read the head from the same local weights.
-  Source: `.local/prov-m3.duckdb`.
+  fold skipped): LDA head on block 25 of 36; pooled held-out accuracy 0.765, ECE 0.058,
+  Brier 0.327, NLL 0.499, coverage at 5% risk 0.088, at 10% risk 0.396; per fold accuracy
+  0.71 to 0.85 and ECE 0.15 to 0.26. Source: `.local/artifacts/Qwen__Qwen3-8B/0190586d/v2/
+  manifest.json` (promoted as CURRENT; local), identical to the bench's `neon_term_fits.L2`
+  cell as D18 requires. Against the gateway L1 (acc 0.618, ECE 0.231 fold-averaged, 0.072
+  pooled; cov@5% 0.077) the head is more accurate and meets the 0.10 ECE bar, but coverage
+  at 5% risk is 25 items, so `auto` thresholds stay null. The fit ran three times: a CLI bug
+  keyed the first bundle under the gateway slug (deleted), and the second (v1) reported
+  fold-averaged ECE 0.193 and cov@5% 0.389 before the pooling fix; v2 supersedes it.
 - First composite run (2026-09-25, `bet_sorting`, static planner, OLS fixtures auto, level
   auto, bundle above loaded): gateway logprobs for the L0 questions and the local head for
   `term.fits`; the sidecar records `backend_kind=composite`, `canonical_model=Qwen/Qwen3-8B`,
