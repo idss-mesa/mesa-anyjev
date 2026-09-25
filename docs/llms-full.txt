@@ -147,13 +147,100 @@ Python 3.11 or newer. `anyjev`, `mesa-mcp` and `mesa-ducklake` come from pinned 
 | Extra | Adds | When |
 |---|---|---|
 | `gateway` | `transformers` (tokenizer only) | Deciding through the CARC LiteLLM gateway (L0, L1). |
-| `hf` | `torch`, `transformers` | Local hidden states for L2 on a CUDA host. |
+| `hf` | `torch`, `transformers`, `accelerate` | Local hidden states for L2 on a CUDA host ([Local weights](local-weights.md)). |
 | `claude` | `anthropic` | The Claude planner and structured-output provider (M2+). |
 | `pg` | `psycopg` | The Postgres provenance sidecar (production). |
 | `e2e` | `mcp` | The end-to-end test over MCP stdio (M4). |
 
 The gateway is reached only over a loopback SSH tunnel; see `RESEARCH.md` in the repository
 for the hosts, the served models and what the gateway does and does not pass through.
+
+---8<--- https://idss-mesa.github.io/mesa-anyjev/getting-started/local-weights/
+
+---
+title: "Local weights"
+description: "Run Qwen/Qwen3-8B on a CUDA host (the GB10 workstation) for hidden states and L2 heads, the composite backend that pairs it with the gateway, and the torch 2.14 Triton switch."
+type: Guide
+tags:
+  - getting-started
+  - hf
+  - l2
+  - gb10
+generated:
+  by: "claude/fable-5.1"
+  at: "2026-09-25T00:00:00Z"
+sources:
+  - id: design
+    resource: "https://github.com/idss-mesa/mesa-anyjev/blob/main/DESIGN.md"
+    title: "mesa-anyjev decisions register (DESIGN.md)"
+    author: "team:idss-mesa"
+  - id: research
+    resource: "https://github.com/idss-mesa/mesa-anyjev/blob/main/RESEARCH.md"
+    title: "mesa-anyjev verified facts (RESEARCH.md)"
+    author: "team:idss-mesa"
+status: draft
+---
+
+# Local weights
+
+The gateway reads a top-20 logprob list and has no hidden states, so it stops at L1. L2
+(a closed-form head on a hidden state, cheaper than L0 because the forward pass stops at the
+head's block) needs the weights on the host. The `hf` extra installs torch, transformers and
+accelerate; on the GB10 workstation that resolves to torch 2.14 with CUDA 13 wheels for
+aarch64 (RESEARCH.md § Hosts).
+
+```bash
+uv sync --all-extras                 # includes hf
+uv run mesa-anyjev doctor --backend hf
+```
+
+The doctor loads `backend.hf_model` (default `Qwen/Qwen3-8B`, bf16, 16.4 GB; about two minutes
+from the local safetensors cache, longer on the first download), reports `n_layers` and
+`hidden_size`, checks that the answer labels are single tokens, runs a two-state probe and
+requires the label tokens to carry the answer mass, and confirms the block loop for early
+stop is available. Then, with the neon-avu-eval labels ingested (see [Learning](../concepts/learning.md)):
+
+```bash
+uv run mesa-anyjev bench run --backend hf --levels raw,L0,L1,L2
+uv run mesa-anyjev learn fit --backend hf --question term.fits --level L2
+uv run mesa-anyjev learn promote --backend hf --version <N> --question term.fits
+uv run mesa-anyjev annotate --backend hf --level auto --card <card.md>
+```
+
+`annotate` and `bench` load the promoted bundle for the configured model before deciding, so
+`--level auto` resolves `term.fits` at L2 when a head is promoted and every other question at
+L0. A bundle fitted on local weights is refused by the gateway backend and the other way
+round (DESIGN D5): the NVFP4 checkpoint the gateway serves and the bf16 checkpoint here are
+recorded as different models until the bench shows they agree.
+
+## Composite: gateway logprobs plus local hidden states
+
+`--backend composite` builds both backends under one name. Logprobs come from the gateway
+(carc-fast) and hidden states from the local model, so a single process can serve L0 and L1
+from the gateway's artifacts and L2 from a local head. The constructor asserts that the two
+tokenizers agree on every label token id (A..Z, Yes, No, 1..9) and refuses otherwise; the
+composite still reads the gateway's top-20 list, so `max_choice_k` stays at 8 for L0 and L1
+while L2 heads read the hidden state and ignore the cap. It needs the tunnel and the key like
+the [gateway](gateway.md) page describes.
+
+## torch 2.14 and Triton
+
+torch 2.14 routes some eager aten ops (the rotary-embedding outer product in Qwen3) through
+Triton kernels that are compiled against `Python.h` on first use. A host whose Python has no
+development headers (the GB10 with the system CPython 3.12) fails inside the forward pass with
+`fatal error: Python.h: No such file or directory`. `backend.hf_native_triton` is therefore
+`false` by default: the factory deregisters torch's Triton DSL overrides before loading, and
+the stock aten kernels run instead. Set it to `true` on a host with headers if you want the
+Triton path.
+
+## What the host can do
+
+| Backend | Levels | Prompts per decision | Where |
+|---|---|---|---|
+| `gateway` | raw, L0, L1 | one prefill per cyclic shift | sparky-2 over the tunnel |
+| `hf` | raw, L0, L1, L2 | one prefill, stopped at the head's block for L2 | this host, CUDA |
+| `composite` | raw, L0, L1 (gateway) and L2 (local) | as above | both |
+| `fake` | all (synthetic hidden states) | none | CI |
 
 ---8<--- https://idss-mesa.github.io/mesa-anyjev/getting-started/quickstart/
 
@@ -305,7 +392,7 @@ milestone M4b.
 
 ---
 title: "Learning"
-description: "Where labels come from, how L1 temperatures are fitted with leave-one-card-out, the guards against positives-only data, and how an artifact is promoted."
+description: "Where labels come from, how L1 temperatures and L2 heads are fitted with leave-one-card-out, the guards against positives-only data, and how an artifact is promoted."
 type: Guide
 tags:
   - concepts
@@ -357,6 +444,18 @@ are positives-only, which would make temperature scaling degenerate and coverage
 100%), and every leave-one-card-out fold needs at least 30 labels per class in training and
 5 in the held-out card, else it is skipped and reported. Fitting runs on a Decider without
 adaptive shifts so the artifact freezes the prior it was fitted with.
+
+`--level L2` fits a closed-form head (LDA or ridge, chosen by the same held-out score) on the
+hidden state of one block, on a backend that exposes hidden states (`hf`, `composite`, or the
+fake backend in tests); the gateway raises `LevelUnavailable`. Both levels go through one
+fitting path, `learn/fit.py`, which the bench's leave-one-card-out cells now share, so a bench
+L1 or L2 cell and a `learn fit` report on the same labels are the same computation, and both
+pool the held-out decisions before computing ECE and coverage (M2's two paths disagreed on
+term.fits ECE, 0.072 against 0.231, because the fitter averaged per-fold values of metrics
+that are not linear in the items). L2 needs at least 40 labels and the same per-class fold
+guards; the manifest records the head's block (`layer_abs`), method and, for L1, the
+temperature. At serving time a head answers only its own question key (A1): a fitted
+`term.fits` head is never routed to another yes/no question.
 
 The fit is saved as a new immutable artifact version whose manifest carries the pooled
 held-out numbers; `learn promote --version N` moves `CURRENT` only when held-out accuracy and
@@ -460,7 +559,7 @@ change. Corrections are new rows.
 
 ---
 title: "Bench results"
-description: "Measured raw, L0 and L1 numbers per question on the CARC gateway and the synthetic backend, every cell naming its results JSON."
+description: "Measured raw, L0, L1 and L2 numbers per question on local Qwen3-8B weights, the CARC gateway and the synthetic backend, every cell naming its results JSON."
 type: Reference
 tags:
   - bench
@@ -470,6 +569,10 @@ generated:
   by: "claude/fable-5.1"
   at: "2026-09-25T00:00:00Z"
 sources:
+  - id: hf-results
+    resource: "https://github.com/idss-mesa/mesa-anyjev/blob/main/bench/results/2026-09-25/Qwen__Qwen3-8B.hf.json"
+    title: "bench results 2026-09-25, Qwen/Qwen3-8B bf16 on the GB10 workstation"
+    author: "team:idss-mesa"
   - id: gateway-results
     resource: "https://github.com/idss-mesa/mesa-anyjev/blob/main/bench/results/2026-09-25/RedHatAI__Qwen3-8B-NVFP4.gateway.json"
     title: "bench results 2026-09-25, carc-fast through the CARC gateway"
@@ -489,6 +592,72 @@ see [Learning](../concepts/learning.md)). `L1 (LOCO)` cells are pooled held-out 
 over seven leave-one-card-out folds. `cov@5%` is the share of items that can be answered
 before the error rate on the answered set exceeds 5%; `flip` is the answer change under
 option reversal (choice) or phrasing swap (yes/no). Every number below names its JSON.
+
+## Qwen/Qwen3-8B bf16 on the GB10 workstation (local weights), 2026-09-25
+
+The same labels through AnyJev's `HFBackend` on this host: the full vocabulary is read (no
+top-20 cap, so no erased labels), and L2 heads read the hidden state of one block.
+`L1 (LOCO)` and `L2 (LOCO)` cells are pooled held-out decisions over seven leave-one-card-out
+folds. The `prompts` column reads 0 because the local backend had no request counter in this
+run (added afterwards; the next run reports prefills).
+
+| task | n | level | acc | ece | brier | cov@5% | cov@10% | flip | n_neg | prompts | ms/dec |
+| neon_annotate | 98 | L0 | 0.439 | 0.474 | 0.970 | 0.000 | 0.000 | 0.143 | 35 | 0 | 817.1 |
+| neon_annotate | 98 | L1 (LOCO) | 0.294 | 0.529 | 0.569 | 0.000 | 0.000 |  | 5 | 0 | 369.2 |
+| neon_annotate | 98 | L2 (LOCO) | 0.765 | 0.257 | 0.354 | 0.353 | 0.353 |  | 5 | 0 | 196.5 |
+| neon_annotate | 98 | raw | 0.439 | 0.512 | 1.022 | 0.000 | 0.000 |  | 35 | 0 | 398.8 |
+| neon_aspect | 60 | L0 | 0.533 | 0.456 | 0.922 | 0.000 | 0.000 | 0.150 | 0 | 0 | 1917.5 |
+| neon_aspect | 60 | L1 (LOCO) | 0.517 | 0.162 | 0.633 | 0.000 | 0.000 |  | 0 | 0 | 8175.3 |
+| neon_aspect | 60 | L2 (LOCO) | 0.567 | 0.175 | 0.552 | 0.383 | 0.417 |  | 0 | 0 | 2983.5 |
+| neon_aspect | 60 | raw | 0.550 | 0.420 | 0.841 | 0.117 | 0.117 | 0.250 | 0 | 0 | 447.3 |
+| neon_keep_avu | 313 | L0 | 0.949 | 0.031 | 0.085 | 0.994 | 1.000 | 0.022 | 11 | 0 | 845.2 |
+| neon_keep_avu | 313 | L1 | n/a | | | | | | | | |
+| neon_keep_avu | 313 | L2 | n/a | | | | | | | | |
+| neon_keep_avu | 313 | raw | 0.962 | 0.036 | 0.074 | 1.000 | 1.000 |  | 11 | 0 | 744.1 |
+| neon_ontology_fits | 190 | L0 | 0.426 | 0.560 | 1.111 | 0.089 | 0.116 | 0.084 | 114 | 0 | 621.4 |
+| neon_ontology_fits | 190 | L1 (LOCO) | 0.426 | 0.233 | 0.537 | 0.089 | 0.111 |  | 114 | 0 | 5381.1 |
+| neon_ontology_fits | 190 | L2 (LOCO) | 0.837 | 0.078 | 0.231 | 0.547 | 0.768 |  | 114 | 0 | 1906.4 |
+| neon_ontology_fits | 190 | raw | 0.421 | 0.566 | 1.137 | 0.089 | 0.105 |  | 114 | 0 | 216.5 |
+| neon_ontology_for_column | 59 | L0 | 0.441 | 0.508 | 1.027 | 0.169 | 0.271 | 0.186 | 0 | 0 | 3085.4 |
+| neon_ontology_for_column | 59 | L1 (LOCO) | 0.441 | 0.141 | 0.732 | 0.102 | 0.102 |  | 0 | 0 | 6622.9 |
+| neon_ontology_for_column | 59 | L2 (LOCO) | 0.712 | 0.154 | 0.391 | 0.458 | 0.678 |  | 0 | 0 | 1679.8 |
+| neon_ontology_for_column | 59 | raw | 0.492 | 0.443 | 0.896 | 0.051 | 0.051 | 0.136 | 0 | 0 | 568.5 |
+| neon_term_choice26 | 44 | L0 | 0.114 | 0.833 | 1.648 | 0.000 | 0.000 | 0.236 | 28 | 0 | 578.2 |
+| neon_term_choice26 | 44 | L1 | n/a | | | | | | | | |
+| neon_term_choice26 | 44 | L2 | n/a | | | | | | | | |
+| neon_term_choice26 | 44 | raw | 0.114 | 0.789 | 1.621 | 0.000 | 0.000 |  | 28 | 0 | 191.4 |
+| neon_term_fits | 285 | L0 | 0.663 | 0.293 | 0.616 | 0.077 | 0.182 | 0.119 | 199 | 0 | 392.3 |
+| neon_term_fits | 285 | L1 (LOCO) | 0.656 | 0.079 | 0.422 | 0.049 | 0.077 |  | 199 | 0 | 2765.1 |
+| neon_term_fits | 285 | L2 (LOCO) | 0.765 | 0.058 | 0.327 | 0.088 | 0.396 |  | 199 | 0 | 1374.7 |
+| neon_term_fits | 285 | raw | 0.642 | 0.316 | 0.656 | 0.074 | 0.112 |  | 199 | 0 | 199.1 |
+| neon_value_kind | 278 | L0 | 0.421 | 0.477 | 1.022 | 0.014 | 0.014 | 0.385 | 0 | 0 | 1046.0 |
+| neon_value_kind | 278 | L1 (LOCO) | 0.428 | 0.088 | 0.669 | 0.007 | 0.007 |  | 0 | 0 | 1709.4 |
+| neon_value_kind | 278 | L2 (LOCO) | 0.576 | 0.069 | 0.565 | 0.029 | 0.040 |  | 0 | 0 | 1275.0 |
+| neon_value_kind | 278 | raw | 0.406 | 0.536 | 1.127 | 0.014 | 0.014 | 0.500 | 0 | 0 | 370.4 |
+
+How to read it (`bench/results/2026-09-25/Qwen__Qwen3-8B.hf.json`):
+
+* **term.fits** (285 states, 199 negatives): accuracy 0.642 raw, 0.663 L0, 0.656 L1, 0.765
+  L2; ECE 0.316, 0.293, 0.079, 0.058; coverage at 5% risk 0.074, 0.077, 0.049, 0.088 and at
+  10% risk 0.112, 0.182, 0.077, 0.396. L2 meets the 0.10 ECE bar with the best accuracy,
+  but only 25 of 285 items can be answered at 5% risk, so `term.fits` `auto` stays null.
+* **column.ontology_fits** (190, 114 negatives) is the one question where L2 changes the
+  picture: accuracy 0.837 and ECE 0.078 with coverage 0.547 at 5% risk and 0.768 at 10%,
+  against 0.426 / 0.233 / 0.089 at L1. The `policy_suggestions` block cites this cell.
+  Before any threshold is adopted the number needs a second label source: these labels are
+  the agentic models' ontology choices, so the head has learnt their habits, not the truth.
+* **column.annotate** (98, 5 negatives above the weight cut at L1/L2): L2 accuracy 0.765
+  against 0.294 at L1, but with five negatives the coverage figure (0.353) rests on almost
+  nothing and every fold barely passes the class guard.
+* **column.aspect** (60) and **avu.value_kind** (278) gain accuracy at L2 (0.567, 0.576)
+  and calibrate (ECE 0.175, 0.069) but stay near zero coverage at 5% risk.
+* **neon_term_choice26** at raw/L0 scores 0.114 locally against 0.227 / 0.205 on the
+  gateway: reading the full vocabulary does not rescue a 26-way choice with a new key per
+  item; the noul-per-candidate design is the right one for this model.
+* **avu.keep**: 11 negatives, no fold may fit, unchanged.
+* Against the gateway at L0 the local bf16 checkpoint scores term.fits 0.663 vs 0.611 and
+  annotate 0.439 vs 0.398, with flip rates 0.119 vs 0.393 on term.fits: the NVFP4 quant and
+  the bf16 weights are not interchangeable, which is why bundles are keyed per model (D5).
 
 ## carc-fast (RedHatAI/Qwen3-8B-NVFP4) through the CARC gateway, 2026-09-25
 
@@ -527,9 +696,10 @@ How to read it (`bench/results/2026-09-25/RedHatAI__Qwen3-8B-NVFP4.gateway.json`
   the wider the choice, the more the gateway erases (DESIGN D11).
 * **avu.keep** has only 11 negatives, so no leave-one-card-out fold is allowed to fit; its
   raw/L0 numbers reflect a positives-heavy label set, not a calibrated gate.
-* The bench's L1 cells were fitted with adaptive shifts (the provider's default) whereas
-  `learn fit` fits without them; on term.fits they disagree on ECE (0.072 here, 0.231 in the
-  promoted bundle's manifest). Milestone M3 makes both use one fitting path.
+* In M2 the bench and `learn fit` disagreed on term.fits ECE (0.072 here, 0.231 in the
+  bundle's manifest). The cause was not the fitting: `learn fit` averaged per-fold ECE and
+  coverage, which are not linear in the items, while the bench pooled the held-out
+  decisions. Since M3 both share one fitting path and both pool (DESIGN D18).
 
 ## Synthetic backend (planted biases; numbers are not a claim about any model)
 
@@ -703,6 +873,7 @@ third-party component.
 
 ## 2026-09-25
 
+* **Creation**: [Local weights](getting-started/local-weights.md) for milestone M3 (the hf and composite backends, the doctor's local checks, the torch 2.14 Triton switch); [Learning](concepts/learning.md) gains the L2 head section and the unified fitting path.
 * **Creation**: [Bench results](bench/results.md): the first gateway and synthetic bench tables.
 * **Creation**: [Learning](concepts/learning.md) for milestone M2 (label sources, LOCO fitting, guards, promotion).
 * **Creation**: [Quickstart](getting-started/quickstart.md) and [Gateway](getting-started/gateway.md) for milestone M1 (annotate, apply, explain; the doctor's gateway checks).
