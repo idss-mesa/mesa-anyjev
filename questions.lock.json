@@ -1,0 +1,103 @@
+{
+ "questions": {
+  "column.annotate": {
+   "kind": "noul",
+   "text": "Should this column receive an ontology-grounded annotation? Answer No for record identifiers, internal codes, timestamps and bookkeeping fields.",
+   "options": [
+    "Yes",
+    "No"
+   ],
+   "key": "8b8c7f14be35925d",
+   "twin": null
+  },
+  "column.aspect": {
+   "kind": "choice",
+   "text": "Which aspect of the dataset does this column describe?",
+   "options": [
+    "taxon: the organisms observed, sampled or identified",
+    "environment: the biome, habitat or environmental material at a site",
+    "method: the sampling protocol, device, assay or processing step",
+    "measurement: a measured quantity, quality or attribute of a thing",
+    "unit: the unit of measure of a measured quantity",
+    "data_type: the kind of record, identifier, dataset or information artifact",
+    "location: a named place, region, plot or geographic feature",
+    "other: none of the above or not an annotatable column"
+   ],
+   "key": "982e2baa2c1c7762",
+   "twin": null
+  },
+  "column.ontology": {
+   "kind": "choice",
+   "text": "Which ontology should be searched for a term that annotates this column?",
+   "options": [
+    "ENVO: environments, biomes, habitats and environmental materials",
+    "NCBITaxon: organisms and taxa at every rank",
+    "PATO: qualities and attributes of things (size, sex, age, colour)",
+    "UO: units of measurement (meter, degree Celsius, percent)",
+    "OBI: investigations, assays, protocols, devices and specimens",
+    "IAO: information artifacts, data items, identifiers and documents",
+    "PCO: populations, communities and their collective properties",
+    "BCO: biological collections, sampling and identification processes",
+    "GAZ: named geographic places and administrative regions",
+    "RO: relations between entities (part of, located in, participates in)",
+    "TAXRANK: taxonomic ranks (species, genus, family, order)",
+    "GENEPIO: sample collection, identification and metadata fields"
+   ],
+   "key": "2de03cc737b509ec",
+   "twin": "column.ontology_fits"
+  },
+  "column.ontology_fits": {
+   "kind": "noul",
+   "text": "Does the ontology described in the state contain the right kind of term for annotating this column?",
+   "options": [
+    "Yes",
+    "No"
+   ],
+   "key": "f45eb7fe2fbefdb5",
+   "twin": null
+  },
+  "term.fits": {
+   "kind": "noul",
+   "text": "Is the candidate ontology term a correct annotation for the described column, site or dataset: the right concept at an appropriate specificity, not merely related?",
+   "options": [
+    "Yes",
+    "No"
+   ],
+   "key": "0ccc8d141ffd30ff",
+   "twin": null
+  },
+  "term.fits.chooser": {
+   "kind": "noul",
+   "text": "Is the candidate ontology term the correct term for the value the user wants to annotate with: the right concept at an appropriate specificity, not merely related?",
+   "options": [
+    "Yes",
+    "No"
+   ],
+   "key": "2675e6ebec9d41e9",
+   "twin": null
+  },
+  "avu.value_kind": {
+   "kind": "choice",
+   "text": "What should the AVU value be?",
+   "options": [
+    "the term label",
+    "the site code",
+    "the column name",
+    "the most frequent data value"
+   ],
+   "key": "18a3a5159c3a8492",
+   "twin": null
+  },
+  "avu.keep": {
+   "kind": "noul",
+   "text": "Given the annotations already selected for this dataset, does this annotation add correct, non-redundant information worth keeping?",
+   "options": [
+    "Yes",
+    "No"
+   ],
+   "key": "926b627a33d6acb4",
+   "twin": null
+  }
+ },
+ "lock_sha": "0190586d51b5d961dab9bf972e4683ebbf2356d6adf1911a5b2d63cee3ab01e2"
+}

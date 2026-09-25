@@ -1,0 +1,28 @@
+# mesa-anyjev documentation
+
+> mesa-anyjev makes MESA's ontology and schema choices declarative and calibrated: AnyJev typed decisions (choice, yes/no, score) over mesa-mcp's OBO/OLS ontology tools, with every decision recorded in a provenance sidecar next to the mesa-ducklake AVU history, and hosted Jev through MotherDuck prompt_jev as a policy-gated third provider. This documentation covers installation, configuration, the decision graph, calibration levels and the write policy, provenance, hosted providers and development. The source repository is an Open Knowledge Format (OKF v0.2) bundle: every page carries YAML frontmatter with type, provenance (generated/sources), and lifecycle (status/stale_after) fields.
+
+Full corpus for ingestion: https://idss-mesa.github.io/mesa-anyjev/llms-full.txt
+
+Every page's Markdown source (OKF frontmatter included) is served at its URL plus `index.md` — for example https://idss-mesa.github.io/mesa-anyjev/getting-started/install/index.md. Agent guide: https://idss-mesa.github.io/mesa-anyjev/about/ai-agents/
+
+For the decisions and verified facts behind the design, read DESIGN.md and RESEARCH.md in the repository; for behaviour, run mesa-anyjev and read its provenance sidecar.
+
+## Getting started
+
+- [Configuration](https://idss-mesa.github.io/mesa-anyjev/getting-started/configuration/): Configure mesa-anyjev with a YAML file, MESA_ANYJEV_ environment variables or flags; precedence and the mesa-mcp fallbacks. (draft)
+- [Install](https://idss-mesa.github.io/mesa-anyjev/getting-started/install/): Install mesa-anyjev with uv, choose the extras for the gateway, local weights, Claude or Postgres, and run the doctor. (draft)
+
+## Develop
+
+- [Architecture](https://idss-mesa.github.io/mesa-anyjev/develop/architecture/): The mesa-anyjev modules, the annotate and apply phases, and the boundaries with AnyJev, mesa-mcp and mesa-ducklake. (draft)
+- [Testing](https://idss-mesa.github.io/mesa-anyjev/develop/testing/): How to run the hermetic mesa-anyjev test suite and the opt-in engine, Postgres, end-to-end and hosted tiers. (draft)
+
+## About
+
+- [AI agents](https://idss-mesa.github.io/mesa-anyjev/about/ai-agents/): How AI agents should read this documentation bundle: llms.txt, the markdown mirror, trust markers. (draft)
+- [License](https://idss-mesa.github.io/mesa-anyjev/about/license/): mesa-anyjev is MIT licensed by the Regents of the University of New Mexico; AnyJev is Apache-2.0; NEON data are CC BY 4.0. (draft)
+
+## Meta
+
+- [Documentation update log](https://idss-mesa.github.io/mesa-anyjev/log/): dated history of changes to this bundle.

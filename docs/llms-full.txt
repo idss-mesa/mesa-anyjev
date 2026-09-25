@@ -1,0 +1,250 @@
+# mesa-anyjev documentation — full corpus
+
+Each page below begins with its canonical URL followed by its original Markdown, OKF frontmatter included.
+
+---8<--- https://idss-mesa.github.io/mesa-anyjev/getting-started/configuration/
+
+---
+title: "Configuration"
+description: "Configure mesa-anyjev with a YAML file, MESA_ANYJEV_ environment variables or flags; precedence and the mesa-mcp fallbacks."
+type: Reference
+tags:
+  - getting-started
+  - configuration
+  - environment
+generated:
+  by: "claude/fable-5.1"
+  at: "2026-09-25T00:00:00Z"
+sources:
+  - id: design
+    resource: "https://github.com/idss-mesa/mesa-anyjev/blob/main/DESIGN.md"
+    title: "mesa-anyjev decisions register (DESIGN.md)"
+    author: "team:idss-mesa"
+  - id: research
+    resource: "https://github.com/idss-mesa/mesa-anyjev/blob/main/RESEARCH.md"
+    title: "mesa-anyjev verified facts (RESEARCH.md)"
+    author: "team:idss-mesa"
+status: draft
+---
+
+# Configuration
+
+Precedence, highest first: command-line flag, environment variable, YAML file
+(`--config FILE`), built-in default. Environment variables use the `MESA_ANYJEV_` prefix and
+`__` to descend into a section: `MESA_ANYJEV_BACKEND__KIND=gateway` sets `backend.kind`.
+
+Two mesa-mcp names are honoured as fallbacks so an existing `mesa-mcp/.env` keeps working:
+`MESA_LLM_BASE_URL` (a trailing `/v1` is stripped) and `MESA_LLM_API_KEY`. Never `source` that
+file in a shell: it contains a hyphenated key; use
+`export MESA_LLM_API_KEY=$(grep '^MESA_LLM_API_KEY=' ../mesa-mcp/.env | cut -d= -f2-)`.
+
+The sections and every field with its default are in `config.yaml.example` and
+`.env.example` in the repository; the model is `mesa_anyjev.config.Config`.
+
+## Sections
+
+| Section | What it configures |
+|---|---|
+| `backend` | The AnyJev backend: `fake`, `gateway` (carc-fast, always `logprobs=20`, `max_choice_k=8`), `hf` (local weights), `composite`. |
+| `decider` | Level request (`auto`), prior, adaptive shifts. |
+| `planner` | The reasoning model: `gateway` (carc-tools, default), `claude`, `static` (fallback). |
+| `policy` | Profile (`prod` needs L1 for auto-writes), thresholds file, hosted-provider switch. |
+| `artifacts`, `provenance`, `ducklake`, `ols`, `motherduck` | Bundle directory, sidecar DSN, local DuckLake catalog, OLS base URL and fixtures, hosted Jev settings. |
+| `eval_root` | The neon-avu-eval checkout for silver labels and the bench (no default). |
+
+---8<--- https://idss-mesa.github.io/mesa-anyjev/getting-started/install/
+
+---
+title: "Install"
+description: "Install mesa-anyjev with uv, choose the extras for the gateway, local weights, Claude or Postgres, and run the doctor."
+type: Guide
+tags:
+  - getting-started
+  - install
+generated:
+  by: "claude/fable-5.1"
+  at: "2026-09-25T00:00:00Z"
+sources:
+  - id: design
+    resource: "https://github.com/idss-mesa/mesa-anyjev/blob/main/DESIGN.md"
+    title: "mesa-anyjev decisions register (DESIGN.md)"
+    author: "team:idss-mesa"
+  - id: research
+    resource: "https://github.com/idss-mesa/mesa-anyjev/blob/main/RESEARCH.md"
+    title: "mesa-anyjev verified facts (RESEARCH.md)"
+    author: "team:idss-mesa"
+status: draft
+---
+
+# Install
+
+```bash
+git clone https://github.com/idss-mesa/mesa-anyjev
+cd mesa-anyjev
+uv sync --all-extras --no-extra hf     # everything except local CUDA weights
+uv run mesa-anyjev doctor
+```
+
+Python 3.11 or newer. `anyjev`, `mesa-mcp` and `mesa-ducklake` come from pinned git commits
+(`pyproject.toml`, `[tool.uv.sources]`); none of them is on PyPI at a usable version.
+
+## Extras
+
+| Extra | Adds | When |
+|---|---|---|
+| `gateway` | `transformers` (tokenizer only) | Deciding through the CARC LiteLLM gateway (L0, L1). |
+| `hf` | `torch`, `transformers` | Local hidden states for L2 on a CUDA host. |
+| `claude` | `anthropic` | The Claude planner and structured-output provider (M2+). |
+| `pg` | `psycopg` | The Postgres provenance sidecar (production). |
+| `e2e` | `mcp` | The end-to-end test over MCP stdio (M4). |
+
+The gateway is reached only over a loopback SSH tunnel; see `RESEARCH.md` in the repository
+for the hosts, the served models and what the gateway does and does not pass through.
+
+---8<--- https://idss-mesa.github.io/mesa-anyjev/develop/architecture/
+
+---
+title: "Architecture"
+description: "The mesa-anyjev modules, the annotate and apply phases, and the boundaries with AnyJev, mesa-mcp and mesa-ducklake."
+type: Reference
+tags:
+  - develop
+  - architecture
+generated:
+  by: "claude/fable-5.1"
+  at: "2026-09-25T00:00:00Z"
+sources:
+  - id: design
+    resource: "https://github.com/idss-mesa/mesa-anyjev/blob/main/DESIGN.md"
+    title: "mesa-anyjev decisions register (DESIGN.md)"
+    author: "team:idss-mesa"
+  - id: research
+    resource: "https://github.com/idss-mesa/mesa-anyjev/blob/main/RESEARCH.md"
+    title: "mesa-anyjev verified facts (RESEARCH.md)"
+    author: "team:idss-mesa"
+status: draft
+---
+
+# Architecture
+
+Two phases (DESIGN D10): `annotate` decides and proposes (no writes); `apply` writes the
+accepted AVUs to iRODS through mesa-mcp's shared helpers and records one mesa-ducklake
+snapshot per run and path. Decisions are written to the sidecar before any iRODS write.
+
+Layers: backends (AnyJev's protocol: fake, gateway, local weights, composite) below
+providers (`DecisionRecord` with level and calibration) below the pipeline; the planner is a
+separate role that only proposes. `mesa_mcp.ols` provides the OLS client and the canonical
+AVU transform; `mesa_ducklake.DuckLakeClient` records snapshots.
+
+The code map is in `CLAUDE.md`; the decisions in `DESIGN.md`; the facts in `RESEARCH.md`.
+
+---8<--- https://idss-mesa.github.io/mesa-anyjev/develop/testing/
+
+---
+title: "Testing"
+description: "How to run the hermetic mesa-anyjev test suite and the opt-in engine, Postgres, end-to-end and hosted tiers."
+type: Guide
+tags:
+  - develop
+  - testing
+generated:
+  by: "claude/fable-5.1"
+  at: "2026-09-25T00:00:00Z"
+sources:
+  - id: design
+    resource: "https://github.com/idss-mesa/mesa-anyjev/blob/main/DESIGN.md"
+    title: "mesa-anyjev decisions register (DESIGN.md)"
+    author: "team:idss-mesa"
+  - id: research
+    resource: "https://github.com/idss-mesa/mesa-anyjev/blob/main/RESEARCH.md"
+    title: "mesa-anyjev verified facts (RESEARCH.md)"
+    author: "team:idss-mesa"
+status: draft
+---
+
+# Testing
+
+```bash
+uv run pytest -q                                   # hermetic: FakeBackend, DuckDB under tmp_path
+uv run ruff check src tests scripts && uv run mypy --strict src
+```
+
+Opt-in tiers are excluded by default and selected with markers and environment variables:
+`engine` (`MESA_ANYJEV_ENGINE=gateway|hf`), `requires_postgres` (`MESA_ANYJEV_TEST_PG_*`),
+`e2e` (`MESA_ANYJEV_E2E=1`), `live` (`MESA_ANYJEV_LIVE=1`), `hosted` (`MESA_ANYJEV_MOTHERDUCK=1`).
+Unit tests never touch the network or a GPU. Every question key is pinned by
+`tests/test_questions_lock.py`; every numeric write threshold is checked by
+`tests/test_policy_citations.py`.
+
+---8<--- https://idss-mesa.github.io/mesa-anyjev/about/ai-agents/
+
+---
+title: "AI agents"
+description: "How AI agents should read this documentation bundle: llms.txt, the markdown mirror, trust markers."
+type: Guide
+tags:
+  - about
+  - agents
+  - okf
+generated:
+  by: "claude/fable-5.1"
+  at: "2026-09-25T00:00:00Z"
+sources:
+  - id: design
+    resource: "https://github.com/idss-mesa/mesa-anyjev/blob/main/DESIGN.md"
+    title: "mesa-anyjev decisions register (DESIGN.md)"
+    author: "team:idss-mesa"
+  - id: research
+    resource: "https://github.com/idss-mesa/mesa-anyjev/blob/main/RESEARCH.md"
+    title: "mesa-anyjev verified facts (RESEARCH.md)"
+    author: "team:idss-mesa"
+status: draft
+---
+
+# AI agents
+
+Start from [`llms.txt`](../llms.txt) (an outline with descriptions) or
+[`llms-full.txt`](../llms-full.txt) (the whole corpus). Any page URL plus `index.md` returns
+that page's Markdown source. Pages without a `verified:` key are unverified (OKF v0.2 §5.3);
+`status: draft` pages need review. For decisions and facts, prefer `DESIGN.md` and
+`RESEARCH.md` in the repository; for behaviour, run `mesa-anyjev` and read its provenance.
+
+---8<--- https://idss-mesa.github.io/mesa-anyjev/about/license/
+
+---
+title: "License"
+description: "mesa-anyjev is MIT licensed by the Regents of the University of New Mexico; AnyJev is Apache-2.0; NEON data are CC BY 4.0."
+type: Policy
+tags:
+  - about
+  - license
+generated:
+  by: "claude/fable-5.1"
+  at: "2026-09-25T00:00:00Z"
+sources:
+  - id: design
+    resource: "https://github.com/idss-mesa/mesa-anyjev/blob/main/DESIGN.md"
+    title: "mesa-anyjev decisions register (DESIGN.md)"
+    author: "team:idss-mesa"
+  - id: research
+    resource: "https://github.com/idss-mesa/mesa-anyjev/blob/main/RESEARCH.md"
+    title: "mesa-anyjev verified facts (RESEARCH.md)"
+    author: "team:idss-mesa"
+status: draft
+---
+
+# License
+
+mesa-anyjev is released under the MIT License, Copyright (c) 2026 The Regents of the
+University of New Mexico. AnyJev is Apache-2.0 software by Nokia and is not affiliated with
+TypeSafe AI or Jev; its `bench/metrics.py` is vendored byte-identical with attribution in
+`THIRD_PARTY.md`. NEON data used by the bench are CC BY 4.0. See `THIRD_PARTY.md` for every
+third-party component.
+
+---8<--- https://idss-mesa.github.io/mesa-anyjev/log/
+
+# Directory Update Log
+
+## 2026-09-25
+
+* **Creation**: the documentation bundle for milestone M0: [Getting started](getting-started/index.md) ([Install](getting-started/install.md), [Configuration](getting-started/configuration.md)), [Concepts](concepts/index.md) ([Decision graph](concepts/decision-graph.md), [Levels and policy](concepts/levels-and-policy.md), [Provenance](concepts/provenance.md), [Hosted providers](concepts/hosted-providers.md)), [Develop](develop/index.md) ([Architecture](develop/architecture.md), [Testing](develop/testing.md)) and [About](about/index.md) ([AI agents](about/ai-agents.md), [License](about/license.md)).

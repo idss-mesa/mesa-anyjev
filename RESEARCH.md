@@ -1,0 +1,128 @@
+# RESEARCH.md — verified facts (2026-09-25)
+
+Every fact names where it was verified. Re-check anything marked `stale_after`.
+
+## Hosts and the gateway
+
+- This workstation (`sparky-1`): NVIDIA GB10, aarch64, 121 GB unified memory, 20 cores, driver
+  580.173.02 / CUDA 13.0, Docker 29 (`nvidia-smi`, `free -g`, `nproc`). `uv pip install --dry-run`
+  resolves torch 2.14.0 (CUDA 13 wheels) + transformers 5.17.0 for aarch64 py3.11; the install
+  itself is an M3 task. AnyJev's `HFBackend` already handles the transformers-5 `dtype` kwarg.
+- CARC gateway: LiteLLM (`ghcr.io/berriai/litellm:main-latest`, `drop_params: true`,
+  `request_timeout: 600`, no DB, master key only) in front of vLLM 0.21.0 backends; owned by
+  account `tredfear` (mesa-nmdid DECISIONS #D28). Reached only over loopback tunnels:
+  `127.0.0.1:8000` (`carc-litellm-tunnel.service` user unit) and `127.0.0.1:18000`
+  (mesa-mcp `scripts/llm_tunnel.sh`, present only on that repo's `live-llm-tests` branch).
+  Both answered 200 on 2026-09-25 (`/health/liveliness`).
+- Served models (`GET /v1/models`, `~/github/carc-agents/models/*.yaml`): `carc-fast` =
+  `RedHatAI/Qwen3-8B-NVFP4` rev `e391349c110709b87bfc2ad2fde3f50dc5839fd8` (40k ctx,
+  `--max-num-seqs 8`, prefix caching on, thinking-off honoured, no `--max-logprobs`);
+  `carc-tools` = `unsloth/Qwen3.8-27B-NVFP4` (~5 tok/s, 4 seqs); `ab-moe` = Qwen3.6-35B-A3B
+  NVFP4 (no thinking-off, hung 2026-09-24); `carc-embed` = `Qwen/Qwen3-Embedding-0.6B`
+  (`--runner=pooling`, normalized; a different model, not usable for L2); `zammad-assist`.
+- Gateway probes on `carc-fast` (2026-09-25, `/v1/completions`, `max_tokens=1`): `logprobs=N`
+  passes through (`top_logprobs` over the full vocabulary); `logprobs=20` works, `logprobs=50`
+  -> HTTP 400 "greater than max allowed: 20"; `allowed_token_ids` is silently ignored both
+  top-level and inside `extra_body`; `/v1/chat/completions` with `logprobs=true,
+  top_logprobs=5` also works; `chat_template_kwargs.enable_thinking=false` passes through.
+  Consequence: a label outside the top-20 floors at -30 in AnyJev's `VLLMBackend`, and the L0
+  log-mean over cyclic shifts then erases the option. `stale_after: 2026-12-31`.
+- Any gateway change (`--max-logprobs`, a pooling instance of the decision model, a
+  text-completion alias, direct vLLM ports) is a request to `tredfear`.
+
+## AnyJev (commit 795a497)
+
+- `Question.choice` (2..26 options), `.noul` (Yes/No), `.score` (2..10 levels);
+  `q.key = sha256(kind, text, options, scale, centers)[:16]`, name excluded.
+- `Decider(backend, level='L0'|'L1'|'L2'|'auto', prior='batch', min_prior_n=8,
+  adaptive_shifts=False, adapt='routed', adapt_min_n=30)`; `decide`, `decide_batch`,
+  `calibrate` (L1 artifact), `fit_head` (L2; needs `hidden_states`; minimum `max(8, 2K)`
+  labels), `observe(fit_at=30, refit_factor=2.0)`, `route`, `export_artifacts` /
+  `load_artifacts` (refuse a model-name mismatch; `save_artifacts` drops observations).
+- `route()` matches the exact key, else any head with the same kind and option texts (no text
+  check): every noul routes to any fitted noul head. Level `auto` picks L2 whenever `route()`
+  is truthy.
+- `calibrate()` with `adaptive_shifts=True` copies `decs[0].diagnostics['prior']`, which is
+  None for the first states of an isolated run, so the artifact freezes no prior.
+- The batch prior is a running per-process accumulator (`_running`), applied once 8 same-key
+  states have been seen; decisions are order-dependent until then. `Decider` is stateful and
+  not thread-safe. `Decision.confidence = max(probs)`; for noul `p_true = probs[0]`.
+- `Decision.diagnostics` carries numpy arrays and numpy scalars.
+- `VLLMBackend(base_url, model, tokenizer_name=None, api_key='EMPTY', workers=16,
+  timeout=120)`: appends `/v1/completions` itself (pass the base without `/v1`), loads the
+  tokenizer without `revision=`, sends `logprobs=len(ids)` + `allowed_token_ids`, floors
+  missing labels at -30, and `hidden_states()` POSTs `/v1/embeddings`. `name = model`.
+- `bench/` and `demo/` are not in the wheel; `bench/metrics.py` (sha256
+  `df0af62c248f27cc806c90266ae62c28b47df8dd8aa9645de815dedc50d7bbbe`) is vendored byte-identical
+  as `mesa_anyjev/bench/_metrics.py`.
+- Readout prompt: system "You are a decision function..." then `State:\n...\n\nQuestion:
+  ...\nOptions:\nA. ...\nAnswer with the letter only.` rendered through the tokenizer chat
+  template with `enable_thinking=False` (Qwen3 emits `<think>\n\n</think>`); the gateway probe
+  reproduced that rendering.
+- Research numbers used in this design: L2 needs 100-300 labels in practice (20 labels ~ L0,
+  50 -> 0.707, 100 -> 0.740, 300 -> 0.772 on Qwen3-8B typed-decisions); K>8 heads keep the
+  canonical listing order; teacher labels cap a student at the teacher's accuracy.
+
+## mesa-mcp (main 8fbaedf) and mesa-ducklake (main 7bc143f)
+
+- Tools register by import side effect (`server.py` lines ~244-248); `register_tool(name,
+  description, *, input_model, output_model)`; `ToolSpec.meta` exists but `_tool_definitions`
+  always calls `_tool_surface(name)`; `MesaServer(config).call(name, args)` is the in-process
+  dispatch; `InputRequired(message, schema, state, key)` is the MRTR elicitation; requestState
+  is unsigned, client-controlled, capped at 16 KiB.
+- OLS term dict: `{label, iri, curie, description, ontologyId, isRoot, hasChildren,
+  synonyms[:5]}`; no parents/ancestors API; `search_terms(ontology_id=...)` leaks imported
+  terms (GO/CL/PR/UBERON under pato); `search_term_descendants` raises `requests.HTTPError`.
+- `handle_avu_from_term` is `async def`; with iri+label and no curie the unit comes back
+  empty, with curie alone it fails; `_label_to_snake` + `ontology_annotations_to_avus` are the
+  sync pieces that produce `attribute='<ontology>.<snake_label>', unit=CURIE`.
+- `record_avu_change(s)` return `None` (the Snapshot is discarded); `_resolve_mirror_target` is
+  private and needs a session.
+- mesa-ducklake: `DuckLakeClient(catalog_dsn='duckdb:///...'|'postgresql://...', cache_dir=,
+  irods_session=None)` runs local-only; `record_changes(project_id, actor, changes, note=,
+  session=) -> Snapshot`; empty `changes` raises `ValueError`; `AvuChange` is `extra='forbid'`
+  with `@field_validator('actor', 'source')` rejecting blanks; the DuckDB catalog is
+  single-writer (file lock); `tests/llm_e2e/harness/mcp_server.py` provides `ElicitationBroker`
+  with `Chooser = Callable[[message, requestedSchema], Awaitable[content | None]]`.
+- 50 registered tools on main (irods 35, ontology 8, datacite 4, policy 2, history 1).
+- DataCite enums (`mesa_mcp.datacite.schema`): ResourceTypeGeneral 28, ContributorType 21,
+  RelationType 23, RelatedIdentifierType 15, DateType 10, DescriptionType 6, NameType 2.
+
+## neon-avu-eval (labels and states)
+
+- 7 dataset cards (DP1.10003.001 brd_countdata, brd_perpoint; DP1.10022.001 bet_*), 42 runs
+  (carc-tools 7, claude-haiku-4-5 7, claude-opus-5-5 14, claude-sonnet-5 14).
+- `results/validated.json`: 572 valid AVUs, 493 column-linked, 303 unique valid (card, CURIE)
+  candidate states, 92 proposed by >= 2 models, 211 by one model. Value kinds: 264 term label,
+  128 site code, 44 column name, 136 other.
+- Resolving CURIE prefixes (valid, not obsolete): ENVO 171, NCBITaxon 94, OBI 82, PATO 61,
+  UO 51, GAZ 31, BCO 27, PCO 16, IAO 15, TAXRANK 7, GENEPIO 5, GO 3, EUPATH 2, AGRO 2,
+  APOLLO_SV 1, OBCS 1, NCIT 1, GECKO 1, CHEBI 1, RO 0.
+- Agreement (`results/metrics.json`): cross-model Jaccard 0.11-0.23 (soft-F1 0.86-0.90 against a
+  0.81 floor); self-consistency Opus 0.50, Sonnet 0.39. NEON data are CC BY 4.0.
+
+## Claude API (claude-api skill, 2026-09-25)
+
+- No logprobs, no `n`, no public tokenizer, no prefill on 4.6+ models: Claude cannot implement
+  the AnyJev Backend protocol at any level.
+- Forced `tool_choice` (`any`/`tool`) returns 400 on Claude Fable 5.1 and Opus 5.5; structured
+  outputs (`output_config.format` json_schema, or `client.messages.parse(output_format=...)`)
+  work with thinking and Batches. Default model `claude-opus-5`, adaptive thinking,
+  `output_config.effort`. `temperature` is rejected on Opus 5 / 5.5 / Sonnet 5 / Fable.
+- Credentials resolve through the SDK: `ANTHROPIC_API_KEY`, `ANTHROPIC_AUTH_TOKEN`, or an
+  `ant auth login` profile (an `idss-mesa` OAuth profile exists on this host).
+
+## MotherDuck `prompt_jev` (docs read 2026-09-25; preview, `stale_after: 2026-12-31`)
+
+- MotherDuck SQL only (not local DuckDB), Lite or Business plan, us-east-1 / us-west-2.
+- `prompt_jev(text_input, instructions, choice := [labels|{label, description}])`,
+  `score := [ordered levels]`, `noul := TRUE`, or `questions := {name: {type, instructions}}`;
+  `instructions` and option lists must be SQL constants; optional `batch_size` (32 rows per
+  request for single questions). Metered on input tokens (blog benchmark: $0.50 per 100k rows,
+  ~2,484 rows/s). NULL input or a failed request yields NULL and the query continues.
+- Returns `STRUCT(choice VARCHAR, probabilities STRUCT(value VARCHAR, probability DOUBLE)[],
+  confidence DOUBLE)` for choice, a weighted position for score, a DOUBLE for noul. Guidance:
+  confidence under ~0.6 signals overlapping or missing options; keep criteria disjoint and
+  phrased as questions.
+- MotherDuck can attach `ducklake:` catalogs (managed DuckLake in preview). The `motherduck`
+  DuckDB extension is not installed in `~/.mesa/.venv`'s duckdb 1.5.5 today.

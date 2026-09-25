@@ -1,0 +1,83 @@
+# Write-policy thresholds per question (DESIGN D6). Every numeric `auto` threshold MUST cite the
+# bench results JSON it came from as `<path>#<cell>`; tests/test_policy_citations.py refuses an
+# uncited number and, for noul questions, a cited cell whose held-out set has fewer than 30
+# negatives (amendment A2). `auto: null` means proposed-only: nothing auto-writes.
+#
+# stat: which statistic the threshold reads. noul -> p_true (never `confidence`, which is
+# max(p, 1-p) and would accept confident rejections; amendment A7); choice -> confidence.
+# min_level: the lowest AnyJev level that may reach `auto` (prod profile floor is L1).
+# min_weight: lowest label weight that enters a fit for this question (A2).
+questions:
+  column.annotate:
+    stat: p_true
+    auto: null
+    propose: 0.5
+    margin: 0.0
+    min_level: L0
+    min_weight: 0.6
+    cite: "D6 bootstrap: proposed-only until a LOCO bench row exists"
+  column.aspect:
+    stat: confidence
+    auto: null
+    propose: 0.45
+    margin: 0.10
+    min_level: L1
+    min_weight: 0.6
+    cite: "D6 bootstrap"
+  column.ontology:
+    stat: confidence
+    auto: null
+    propose: 0.40
+    margin: 0.0
+    min_level: L1
+    min_weight: 0.6
+    cite: "D6 bootstrap"
+  column.ontology_fits:
+    stat: p_true
+    auto: null
+    propose: 0.40
+    margin: 0.0
+    min_level: L1
+    min_weight: 0.6
+    cite: "D6 bootstrap"
+  term.fits:
+    stat: p_true
+    auto: null
+    propose: 0.50
+    margin: 0.15
+    min_level: L1
+    min_weight: 0.5            # consensus negatives (0.5) must enter (A2)
+    cite: "D6 bootstrap"
+  term.fits.chooser:
+    stat: p_true
+    auto: null
+    propose: 0.50
+    margin: 0.15
+    min_level: L1
+    min_weight: 0.5
+    cite: "D6 bootstrap"
+  avu.value_kind:
+    stat: confidence
+    auto: null
+    propose: 0.50
+    margin: 0.0
+    min_level: L0
+    min_weight: 0.6
+    cite: "D6 bootstrap"
+  avu.keep:
+    stat: p_true
+    auto: null
+    propose: 0.50
+    margin: 0.0
+    min_level: L1
+    min_weight: 0.6
+    cite: "D6 bootstrap"
+profiles:
+  prod:
+    min_level_write: L1
+    auto_calibrations: [anyjev]
+    allow_hosted_write: false
+  dev:
+    min_level_write: L0
+    auto_calibrations: [anyjev]
+    allow_hosted_write: false
