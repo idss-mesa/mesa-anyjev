@@ -496,6 +496,9 @@ def build_parser() -> argparse.ArgumentParser:
         "artifacts", parents=[common], help="list artifact bundles for the configured model"
     )
     ar.add_argument("verb", choices=["list"], nargs="?", default="list")
+    ar.add_argument(
+        "--backend", choices=["fake", "gateway", "hf", "composite"], help="override backend.kind"
+    )
     ar.set_defaults(func=_cmd_artifacts)
     return p
 
@@ -503,7 +506,7 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     overrides: dict[str, Any] = {}
-    if getattr(args, "backend", None) and args.cmd in ("annotate", "learn", "bench"):
+    if getattr(args, "backend", None) and args.cmd in ("annotate", "learn", "bench", "artifacts"):
         overrides.setdefault("backend", {})["kind"] = args.backend
     if getattr(args, "level", None):
         overrides.setdefault("decider", {})["level"] = args.level

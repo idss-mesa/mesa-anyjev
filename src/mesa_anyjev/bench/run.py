@@ -121,7 +121,11 @@ def _decide_items(
     if task.meta.get("per_item_question"):
         out: list[DecisionRecord] = []
         for state, _ in items:
-            out.extend(provider.decide_batch([state["state"]], state["question"], level=level))
+            out.extend(
+                provider.decide_batch(
+                    [state["state"]], state["question"], level=level, allow_over_cap=True
+                )
+            )
         return out
     recs: list[DecisionRecord] = list(
         provider.decide_batch([s for s, _ in items], task.question, level=level)
@@ -167,6 +171,9 @@ def run_task(
                 recs = _decide_items(provider, task, task.items, level)
             except LevelUnavailable as exc:
                 result["cells"][level] = {"not_applicable": True, "reason": str(exc)}
+                continue
+            except Exception as exc:
+                result["cells"][level] = {"error": f"{type(exc).__name__}: {exc}"}
                 continue
             flipped = _flip_probs(provider, task, task.items, level) if flip_probe else None
             cell = _cell(recs, labels, positive=positive, probs_flipped=flipped)
@@ -251,7 +258,7 @@ def suggest_policy(results: Sequence[dict[str, Any]]) -> dict[str, Any]:
         if not qid:
             continue
         for level, cell in res["cells"].items():
-            if cell.get("not_applicable") or not cell.get("loco"):
+            if cell.get("not_applicable") or cell.get("error") or not cell.get("loco"):
                 continue
             if cell.get("n_neg", 0) < MIN_TRAIN_PER_CLASS or not cell.get("cov@5%"):
                 continue
@@ -318,8 +325,9 @@ def markdown_table(payload: dict[str, Any]) -> str:
     ]
     for name, res in payload["tasks"].items():
         for level, cell in res["cells"].items():
-            if cell.get("not_applicable"):
-                lines.append(f"| {name} | {res['n_items']} | {level} | n/a | | | | | | | | |")
+            if cell.get("not_applicable") or cell.get("error"):
+                tag = "n/a" if cell.get("not_applicable") else "error"
+                lines.append(f"| {name} | {res['n_items']} | {level} | {tag} | | | | | | | | |")
                 continue
             tag = f"{level} (LOCO)" if cell.get("loco") else level
             cols = [_fmt(cell, k) for k in ("acc", "ece", "brier", "cov@5%", "cov@10%", "flip")]

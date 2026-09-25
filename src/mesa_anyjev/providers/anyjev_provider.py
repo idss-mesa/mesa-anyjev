@@ -129,9 +129,20 @@ class AnyJevProvider:
 
     # -- deciding ------------------------------------------------------------------------------
     def decide_batch(
-        self, states: Sequence[dict[str, Any]], question: Question, *, level: str | None = None
+        self,
+        states: Sequence[dict[str, Any]],
+        question: Question,
+        *,
+        level: str | None = None,
+        allow_over_cap: bool = False,
     ) -> list[DecisionRecord]:
-        if question.kind == "choice" and question.k > self.capabilities.max_choice_k:
+        """``allow_over_cap`` is for the bench's control tasks only: it lets a choice wider than
+        the backend can read run anyway so the degradation is measured, never served."""
+        if (
+            question.kind == "choice"
+            and question.k > self.capabilities.max_choice_k
+            and not allow_over_cap
+        ):
             raise CapabilityError(
                 f"{question.id}: K={question.k} exceeds max_choice_k={self.capabilities.max_choice_k}; ask the twin"
             )
