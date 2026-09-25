@@ -46,6 +46,14 @@ def test_save_promote_load(tmp_path: Path) -> None:
     assert fresh.decide("state 3 Yes", [q], level="L1")["t"].level == "L1"
     with pytest.raises(ValueError, match="strict"):
         store.load_into(_decider(), backend_kind="gateway")
+    # composite may load an hf-fitted bundle (same local hidden states); nothing else crosses
+    hf_store = ArtifactStore(tmp_path / "hf", "m", "l" * 64)
+    hf_store.save(dec, {"fitted_on": {"backend_kind": "hf"}})
+    hf_store.promote(1)
+    assert hf_store.load_into(_decider(), backend_kind="composite") == 1
+    assert hf_store.load_into(_decider(), backend_kind="hf") == 1
+    with pytest.raises(ValueError, match="strict"):
+        hf_store.load_into(_decider(), backend_kind="gateway")
     with pytest.raises(FileNotFoundError):
         store.promote(9)
     v2 = store.save(dec, {})

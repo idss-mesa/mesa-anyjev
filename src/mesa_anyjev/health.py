@@ -55,9 +55,89 @@ def doctor(cfg: Config, *, backend_kind: str | None = None) -> HealthReport:
     rep.add("backend", True, f"kind={kind} planner={cfg.planner.kind} profile={cfg.policy.profile}")
     if kind == "gateway":
         _gateway_checks(cfg, rep)
-    elif kind == "hf":
-        rep.add("hf backend", False, "local weights arrive with milestone M3")
+    elif kind in ("hf", "composite"):
+        _hf_checks(cfg, rep)
+    _artifact_checks(cfg, rep, kind)
     return rep
+
+
+def _hf_checks(cfg: Config, rep: HealthReport) -> None:
+    try:
+        import torch
+    except ImportError:
+        rep.add("torch", False, "install the `hf` extra (torch, transformers, accelerate)")
+        return
+    rep.add(
+        "torch",
+        True,
+        f"{torch.__version__} cuda={torch.version.cuda} available={torch.cuda.is_available()}",
+    )
+    if not torch.cuda.is_available() and cfg.backend.hf_device.startswith("cuda"):
+        rep.add("cuda", False, "no CUDA device but backend.hf_device is cuda")
+        return
+    try:
+        from anyjev.backends.hf import HFBackend
+
+        from mesa_anyjev.backends.factory import prepare_torch
+
+        prepare_torch(cfg.backend)
+        backend = HFBackend(
+            cfg.backend.hf_model,
+            device=cfg.backend.hf_device,
+            dtype=cfg.backend.hf_dtype,
+            batch_size=cfg.backend.hf_batch_size,
+        )
+    except Exception as exc:
+        rep.add(
+            "hf model", False, f"{cfg.backend.hf_model}: {type(exc).__name__}: {str(exc)[:200]}"
+        )
+        return
+    mem = round(torch.cuda.memory_allocated() / 1e9, 1) if torch.cuda.is_available() else 0.0
+    rep.add(
+        "hf model",
+        True,
+        f"{cfg.backend.hf_model} n_layers={backend.n_layers} hidden_size={backend.hidden_size} mem={mem} GB",
+    )
+    _label_checks(backend.tokenizer, rep)
+    from anyjev import Decider, Question
+
+    dec = Decider(backend, level="raw")
+    q = Question.noul("Is the sky blue?", name="probe")
+    decs = dec.decide_batch(["The sky is blue today.", "It is raining and grey."], q, level="raw")
+    mass = min(float(d.diagnostics.get("answer_mass", 0.0)) for d in decs)
+    rep.add(
+        "answer mass",
+        mass > 0.5,
+        f"min answer_mass {mass:.3f} on two probe states (label tokens carry the answer)",
+    )
+    rep.add("early stop", hasattr(backend, "hidden_states_to"), "block loop available for L2 heads")
+
+
+def _artifact_checks(cfg: Config, rep: HealthReport, kind: str) -> None:
+    from mesa_anyjev.artifacts import ArtifactStore
+
+    model = (
+        cfg.backend.canonical_model
+        if kind == "gateway"
+        else (cfg.backend.hf_model if kind in ("hf", "composite") else "fake")
+    )
+    store = ArtifactStore(
+        cfg.artifacts.dir, model, questions.lock_sha(), strict=cfg.artifacts.strict
+    )
+    current = store.current()
+    if current is None:
+        rep.add(
+            "artifacts", True, f"no promoted bundle for {model} under {store.dir} (serving at L0)"
+        )
+        return
+    m = current.manifest
+    fitted = m.get("fitted_on", {})
+    ok = not cfg.artifacts.strict or fitted.get("backend_kind") in (None, kind)
+    rep.add(
+        "artifacts",
+        ok,
+        f"v{current.version} questions={list(m.get('per_question', {}))} fitted_on={fitted}",
+    )
 
 
 def _gateway_checks(cfg: Config, rep: HealthReport) -> None:

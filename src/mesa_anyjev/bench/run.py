@@ -185,24 +185,21 @@ def run_task(
                 ]
                 cell["flip"] = float(np.mean([float(f) for f in flips])) if flips else None  # type: ignore[arg-type]
             cell["missing_labels"] = int(getattr(provider, "last_missing_labels", 0))
-        elif level == "L1":
+        elif level in ("L1", "L2"):
             cell = (
                 _fit_eval_loco(provider, task, level)
                 if loco
-                else {"not_applicable": True, "reason": "L1 needs --loco"}
+                else {"not_applicable": True, "reason": f"{level} needs --loco"}
             )
         else:
-            cell = {
-                "not_applicable": True,
-                "reason": "L2 arrives with milestone M3 (local weights)",
-            }
+            cell = {"not_applicable": True, "reason": f"unknown level {level}"}
         if not cell.get("not_applicable"):
             cell["seconds"] = round(time.monotonic() - started, 2)
             cell["prompts"] = (
                 int(getattr(backend, "prompts_seen", getattr(backend, "requests", 0))) - prompts0
             )
             cell["ms_per_decision"] = round(1000 * cell["seconds"] / max(1, len(task.items)), 1)
-            cell["loco"] = loco if level == "L1" else False
+            cell["loco"] = loco if level in ("L1", "L2") else False
             cell["masked"] = bool(task.meta.get("masked", False))
         result["cells"][level] = cell
     return result
@@ -231,13 +228,17 @@ def _fit_eval_loco(provider: Any, task: Task, level: str) -> dict[str, Any]:
         ):
             skipped[card] = f"insufficient_heldout_per_class {te_counts}"
             continue
-        if hasattr(provider, "reset_running_prior"):
-            provider.reset_running_prior()
-        provider.calibrate(q, [s for s, _ in train], [lbl for _, lbl in train])
-        try:
-            recs = provider.decide_batch([s for s, _ in test], q, level=level)
-        finally:
-            provider.decider._artifacts.pop(q.key, None)
+        from mesa_anyjev.learn.fit import fit_decider, fit_on
+
+        dec = fit_decider(provider.backend, provider.cfg)
+        with provider.lock:
+            try:
+                fit_on(dec, q, [s for s, _ in train], [lbl for _, lbl in train], level)
+            except (ValueError, LevelUnavailable) as exc:
+                skipped[card] = f"fit failed: {exc}"
+                continue
+            decisions = dec.decide_batch([s for s, _ in test], q, level=level)
+        recs = [provider.record_from(q, s, d) for (s, _), d in zip(test, decisions, strict=True)]
         folds[card] = _cell(recs, [lbl for _, lbl in test], positive=positive)
         pooled_recs.extend(recs)
         pooled_labels.extend(lbl for _, lbl in test)

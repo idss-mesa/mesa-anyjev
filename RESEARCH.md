@@ -6,8 +6,17 @@ Every fact names where it was verified. Re-check anything marked `stale_after`.
 
 - This workstation (`sparky-1`): NVIDIA GB10, aarch64, 121 GB unified memory, 20 cores, driver
   580.173.02 / CUDA 13.0, Docker 29 (`nvidia-smi`, `free -g`, `nproc`). `uv pip install --dry-run`
-  resolves torch 2.14.0 (CUDA 13 wheels) + transformers 5.17.0 for aarch64 py3.11; the install
-  itself is an M3 task. AnyJev's `HFBackend` already handles the transformers-5 `dtype` kwarg.
+  resolves torch 2.14.0 (CUDA 13 wheels) + transformers 5.17.0 for aarch64 py3.11. Installed
+  in M3 (venv on the system CPython 3.12, `uv sync --all-extras`): `torch 2.14.0+cu130`, CUDA
+  13.0 visible, a bf16 4096x4096 matmul runs; `Qwen/Qwen3-8B` bf16 loads through AnyJev's
+  `HFBackend` in about two minutes from the safetensors cache (16.4 GB resident; `doctor
+  --backend hf` 2026-09-25: `n_layers=36 hidden_size=4096`, labels single-token, probe
+  answer mass 1.000, block loop available). `accelerate` is required by transformers 5 for
+  `device_map`; it is in the `hf` extra. torch 2.14's `torch._native` routes the Qwen3 rotary
+  outer product through a Triton kernel whose driver shim is compiled against `Python.h` on
+  first use; the system Python has no headers (`sudo` needs a password), so the factory
+  deregisters the Triton DSL overrides (`torch._native.registry.deregister_op_overrides(
+  disable_dsl_names="triton")`, DESIGN D19) and the forward pass runs on aten kernels.
 - CARC gateway: LiteLLM (`ghcr.io/berriai/litellm:main-latest`, `drop_params: true`,
   `request_timeout: 600`, no DB, master key only) in front of vLLM 0.21.0 backends; owned by
   account `tredfear` (mesa-nmdid DECISIONS #D28). Reached only over loopback tunnels:
@@ -47,9 +56,38 @@ Every fact names where it was verified. Re-check anything marked `stale_after`.
   carc-fast, raw/L0/L1 with leave-one-card-out): `term.fits` acc 0.502 / 0.611 / 0.621, ECE
   0.372 / 0.262 / 0.072, cov@5% 0.004 / 0.007 / 0.007 (n 285, n_neg 199); `column.aspect`
   (K=8) lost 19 labels to the top-20 readout at L0 (7 at raw); the choice26 control at L0
-  scored 0.205 on 44 items; `avu.keep` fits nothing (11 negatives). The bench's adaptive-shift
-  L1 and `learn fit`'s full-cycle L1 disagree on ECE (0.072 vs 0.231) on the same labels; one
-  fitting path is an M3 task. Thresholds stay proposed-only.
+  scored 0.205 on 44 items; `avu.keep` fits nothing (11 negatives). The bench's L1 and `learn fit`'s
+  L1 disagreed on ECE (0.072 vs 0.231) on the same labels; M3 traced it to `learn fit`
+  averaging per-fold ECE and coverage instead of pooling the held-out decisions (the per-fold
+  values agree exactly), fixed in `learn/fit.py` (D18). Thresholds stay proposed-only.
+- First local bench (2026-09-25, `bench/results/2026-09-25/Qwen__Qwen3-8B.hf.json`,
+  `Qwen/Qwen3-8B` bf16 on the GB10, raw/L0/L1/L2 with leave-one-card-out, 7 tasks, 1 h 50 min
+  while sharing the GPU with the fit and two annotate runs): `term.fits` acc 0.642 / 0.663 /
+  0.656 / 0.765, ECE 0.316 / 0.293 / 0.079 / 0.058, cov@5% 0.074 / 0.077 / 0.049 / 0.088,
+  cov@10% at L2 0.396 (n 285, n_neg 199); `column.ontology_fits` at L2 acc 0.837, ECE 0.078,
+  cov@5% 0.547 (n 190, n_neg 114) against 0.426 / 0.233 / 0.089 at L1; `column.annotate` at
+  L2 acc 0.765 on 5 negatives; choice26 control 0.114 at raw and L0; `avu.keep` fits nothing.
+  Local L0 vs gateway L0 on the same items: term.fits 0.663 vs 0.611 with phrasing-flip 0.119
+  vs 0.393. The `prompts` column is 0 (the local backend had no counter; added after the run).
+  The results file was written under the gateway slug by a CLI bug fixed in the same
+  milestone and renamed by hand; its `environment.model` is `Qwen/Qwen3-8B`.
+- First L2 fit on local weights (2026-09-25, `term.fits`, `Qwen/Qwen3-8B` bf16 on the GB10,
+  the same 285 labelled states as the gateway L1 fit, leave-one-card-out over 7 cards, no
+  fold skipped): LDA head on block 25 of 36; pooled held-out accuracy 0.765, ECE 0.058,
+  Brier 0.327, NLL 0.499, coverage at 5% risk 0.088, at 10% risk 0.396; per fold accuracy
+  0.71 to 0.85 and ECE 0.15 to 0.26. Source: `.local/artifacts/Qwen__Qwen3-8B/0190586d/v2/
+  manifest.json` (promoted as CURRENT; local), identical to the bench's `neon_term_fits.L2`
+  cell as D18 requires. Against the gateway L1 (acc 0.618, ECE 0.231 fold-averaged, 0.072
+  pooled; cov@5% 0.077) the head is more accurate and meets the 0.10 ECE bar, but coverage
+  at 5% risk is 25 items, so `auto` thresholds stay null. The fit ran three times: a CLI bug
+  keyed the first bundle under the gateway slug (deleted), and the second (v1) reported
+  fold-averaged ECE 0.193 and cov@5% 0.389 before the pooling fix; v2 supersedes it.
+- First composite run (2026-09-25, `bet_sorting`, static planner, OLS fixtures auto, level
+  auto, bundle above loaded): gateway logprobs for the L0 questions and the local head for
+  `term.fits`; the sidecar records `backend_kind=composite`, `canonical_model=Qwen/Qwen3-8B`,
+  `served_model=carc-fast`, 26 `term.fits` decisions at L2 and every other question at L0
+  (`column.annotate` 20 rule rows at level none); 34 gateway prompts, 0 missing labels,
+  13.1 s. Numbers from `.local/prov-m3c.duckdb`, not a bench file.
 - Any gateway change (`--max-logprobs`, a pooling instance of the decision model, a
   text-completion alias, direct vLLM ports) is a request to `tredfear`.
 

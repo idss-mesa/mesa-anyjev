@@ -3,4 +3,5 @@
 * [Install](install.md) - Install mesa-anyjev with uv, the extras, and what each host can run.
 * [Quickstart](quickstart.md) - One card end to end on the fake backend, apply to a local DuckLake, read the provenance.
 * [Gateway](gateway.md) - Decide with carc-fast on the CARC gateway at L0.
+* [Local weights](local-weights.md) - Qwen3-8B on a CUDA host for L2 heads, and the composite backend.
 * [Configuration](configuration.md) - The MESA_ANYJEV_ environment variables, the YAML file and precedence.

@@ -25,7 +25,9 @@ from mesa_anyjev.questions import QUESTIONS
 ROOT = Path(__file__).resolve().parent
 FIXTURES = ROOT / "fixtures" / "ols"
 EVAL_ROOT = Path(
-    os.environ.get("MESA_ANYJEV_EVAL_ROOT", "/home/tswetnam/github/idss-mesa/neon-avu-eval")
+    os.environ.get(
+        "MESA_ANYJEV_EVAL_ROOT", str(Path(__file__).resolve().parent / "fixtures" / "neon-avu-eval")
+    )
 )
 
 pytestmark = pytest.mark.skipif(
@@ -93,7 +95,7 @@ def test_tasks_and_bench_on_fake(labelled: DuckDBStore, tmp_path: Path) -> None:
     }
     assert tf["L0"]["n_neg"] >= 190
     assert tf["L1"]["loco"] is True and tf["L1"]["n_folds"] >= 1 and tf["L1"]["levels"] == ["L1"]
-    assert tf["L2"]["not_applicable"]
+    assert tf["L2"]["loco"] is True and tf["L2"]["levels"] == ["L2"]  # fake hidden states
     assert results[1]["cells"]["L1"]["not_applicable"]
     assert results[2]["cells"]["L0"]["flip"] is not None  # reversed-options probe for a choice
     path = write_results(results, tmp_path, "fake", "fake", {"model": "fake"}, date="2026-01-01")

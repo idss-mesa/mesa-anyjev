@@ -23,6 +23,32 @@ from mesa_anyjev.provenance.store import ProvenanceStore
 from mesa_anyjev.questions import QUESTIONS, lock_sha
 
 MIN_LABELS_L1 = 100
+MIN_LABELS_L2 = 40  # AnyJev's hard minimum is max(8, 2K); 100-300 is the practical range
+
+
+def fit_decider(backend: Any, cfg: Any) -> Decider:
+    """The one fitting Decider (bench and fitter alike): no adaptive shifts, so an L1
+    artifact freezes the prior it was fitted with (amendment A5)."""
+    return Decider(
+        backend,
+        level="L0",
+        prior=cfg.prior,
+        adaptive_shifts=False,
+        max_permutations=cfg.max_permutations,
+    )
+
+
+def fit_on(
+    decider: Decider, q: Question, states: list[Any], labels: list[int], level: str
+) -> dict[str, Any]:
+    """Fit the artifact for ``level`` on ``decider`` and return it."""
+    if level == "L1":
+        out: dict[str, Any] = decider.calibrate(q, states, labels)
+        return out
+    if level == "L2":
+        head: dict[str, Any] = decider.fit_head(q, states, labels, listing="auto")
+        return head
+    raise ValueError(f"cannot fit level {level!r}")
 
 
 @dataclass
@@ -40,16 +66,6 @@ class FitReport:
     detail: str = ""
 
 
-def _fit_decider(backend: Any, cfg: Any) -> Decider:
-    return Decider(
-        backend,
-        level="L0",
-        prior=cfg.prior,
-        adaptive_shifts=False,
-        max_permutations=cfg.max_permutations,
-    )
-
-
 def _eval(
     decider: Decider, q: Question, states: list[Any], labels: list[int], level: str
 ) -> dict[str, Any]:
@@ -65,9 +81,14 @@ def _eval(
     out["class_counts"] = counts
     out["n_neg"] = sum(v for k, v in counts.items() if k != 0) if q.kind == "noul" else None
     out["levels"] = sorted({d.level for d in decs})
+    out["blocks_executed"] = max(
+        (int(d.diagnostics.get("blocks_executed", 0)) for d in decs), default=0
+    )
     out["prior_frozen"] = all(
         str(d.diagnostics.get("prior_method", "")).startswith("frozen:") for d in decs
     )
+    out["_probs"] = probs.tolist()  # kept for pooling, stripped before the manifest
+    out["_labels"] = list(labels)
     return out
 
 
@@ -89,13 +110,18 @@ def fit_question(
     report = FitReport(
         question_id, level, "fitted", n_labels=len(ls), class_counts=ls.class_counts()
     )
-    if level != "L1":
+    if level not in ("L1", "L2"):
         report.status = "unsupported"
-        report.detail = "L2 fitting arrives with milestone M3"
+        report.detail = f"level {level!r}"
         return report
-    if len(ls) < MIN_LABELS_L1:
+    if level == "L2" and not provider.capabilities.hidden_states:
+        report.status = "unsupported"
+        report.detail = f"L2 needs hidden states; backend {provider.model} has none (D11)"
+        return report
+    minimum = MIN_LABELS_L1 if level == "L1" else MIN_LABELS_L2
+    if len(ls) < minimum:
         report.status = "insufficient_labels"
-        report.detail = f"{len(ls)} < {MIN_LABELS_L1} labels at min_weight {thresholds.min_weight}"
+        report.detail = f"{len(ls)} < {minimum} labels at min_weight {thresholds.min_weight}"
         return report
     if q.kind == "noul" and (
         len(ls.class_counts()) < 2 or min(ls.class_counts().values()) < MIN_TRAIN_PER_CLASS
@@ -127,8 +153,8 @@ def fit_question(
                 if q.kind == "noul" and (len(te) < 2 or min(te.values()) < MIN_HELDOUT_PER_CLASS):
                     report.skipped_folds[card] = f"insufficient_heldout_per_class {te}"
                     continue
-                dec = _fit_decider(backend, provider.cfg)
-                dec.calibrate(q, [s for s, _ in train], [lbl for _, lbl in train])
+                dec = fit_decider(backend, provider.cfg)
+                fit_on(dec, q, [s for s, _ in train], [lbl for _, lbl in train], level)
                 report.folds[card] = _eval(
                     dec, q, [s for s, _ in test], [lbl for _, lbl in test], level
                 )
@@ -137,8 +163,8 @@ def fit_question(
                 report.detail = "every leave-one-card-out fold was skipped"
                 return report
             report.loco = _pool(report.folds)
-        final = _fit_decider(backend, provider.cfg)
-        final.calibrate(q, ls.states, ls.labels)
+        final = fit_decider(backend, provider.cfg)
+        artifact = fit_on(final, q, ls.states, ls.labels, level)
     manifest = {
         "fitted_on": fitted_on
         or {"backend_kind": backend_kind, "served_model": getattr(provider, "served_model", None)},
@@ -149,6 +175,9 @@ def fit_question(
                 "n_calib": len(ls),
                 "class_counts": ls.class_counts(),
                 "min_weight": thresholds.min_weight,
+                "layer_abs": artifact.get("layer_abs"),
+                "method": artifact.get("method"),
+                "temperature": artifact.get("temperature"),
             }
         },
         "validation": {
@@ -174,13 +203,25 @@ def _counts(items: list[tuple[Any, int]]) -> dict[int, int]:
 
 
 def _pool(folds: dict[str, dict[str, Any]]) -> dict[str, Any]:
-    n = sum(int(f["n"]) for f in folds.values())
-    if not n:
+    """Metrics over the union of every fold's held-out decisions (what the bench does).
+    ECE and coverage are not linear in the items, so averaging per-fold values overstates
+    both; that was the M2 disagreement between `learn fit` and the bench."""
+    import numpy as np
+
+    rows: list[list[float]] = []
+    labels: list[int] = []
+    for f in folds.values():
+        rows.extend(f.pop("_probs", []))
+        labels.extend(f.pop("_labels", []))
+    if not labels:
         return {}
-    w = {k: int(f["n"]) / n for k, f in folds.items()}
-    keys = ("acc", "ece", "brier", "nll", "cov@5%", "cov@10%")
-    pooled = {k: float(sum(w[c] * float(folds[c][k]) for c in folds)) for k in keys}
-    pooled["n"] = n
+    probs = np.zeros((len(rows), max(len(r) for r in rows)), dtype=float)
+    for i, row in enumerate(rows):
+        probs[i, : len(row)] = row
+    summary: dict[str, Any] = _metrics.summarize(probs, labels)
+    summary["cov@10%"] = float(_metrics.coverage_at_risk(probs, labels, target=0.10))
+    pooled = {k: float(summary[k]) for k in ("acc", "ece", "brier", "nll", "cov@5%", "cov@10%")}
+    pooled["n"] = len(labels)
     pooled["n_neg"] = sum(int(f.get("n_neg") or 0) for f in folds.values())
     pooled["n_folds"] = len(folds)
     return pooled

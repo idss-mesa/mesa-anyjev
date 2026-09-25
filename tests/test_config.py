@@ -11,6 +11,7 @@ def test_defaults() -> None:
     cfg = load_config(env={})
     assert cfg.backend.kind == "fake"
     assert cfg.backend.logprobs == 20 and cfg.backend.max_choice_k == 8
+    assert cfg.backend.hf_model == "Qwen/Qwen3-8B" and cfg.backend.hf_native_triton is False
     assert cfg.planner.kind == "gateway"
     assert cfg.policy.profile == "prod" and cfg.policy.hosted_providers == "off"
     assert cfg.eval_root is None
