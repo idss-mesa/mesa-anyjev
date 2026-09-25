@@ -28,6 +28,7 @@ summarised at the end.
 | D20 | A composite backend may load an hf-fitted bundle (its heads read the same local hidden states); no other cross-kind load is allowed | accepted |
 | D21 | Human picks are authoritative and label-generating: the pick is a curator positive (1.0), the other offered candidates implicit negatives (0.7), an explicit "none of these" curator negatives (1.0); a decline writes no label; serving never fits (A3, D15) | accepted |
 | D22 | The MCP apply tool asks one elicitation per open candidate group; the request state carries ids only and every label, probability and level on resume comes from the sidecar; an unoffered id or a foreign run is refused (D8 made concrete) | accepted |
+| D23 | The hosted SQL literal per question is pinned in `questions.lock.json` beside the key but does not enter the lock sha: a change in the hosted rendering must fail the lock test, not rotate every artifact | accepted |
 | D19 | Local weights load through `HFBackend` with torch's Triton eager overrides deregistered by default (`backend.hf_native_triton=false`): torch 2.14 compiles those kernels against `Python.h` at first use and hosts without CPython headers fail inside the forward pass; the aten fallbacks are the same numerics | accepted |
 
 ## D0. Pinned git dependencies

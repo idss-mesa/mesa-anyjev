@@ -99,5 +99,15 @@
    "twin": null
   }
  },
+ "hosted_sql": {
+  "column.annotate": "prompt_jev(state_text, 'Should this column receive an ontology-grounded annotation? Answer No for record identifiers, internal codes, timestamps and bookkeeping fields.', noul := TRUE)",
+  "column.aspect": "prompt_jev(state_text, 'Which aspect of the dataset does this column describe?', choice := ['taxon: the organisms observed, sampled or identified', 'environment: the biome, habitat or environmental material at a site', 'method: the sampling protocol, device, assay or processing step', 'measurement: a measured quantity, quality or attribute of a thing', 'unit: the unit of measure of a measured quantity', 'data_type: the kind of record, identifier, dataset or information artifact', 'location: a named place, region, plot or geographic feature', 'other: none of the above or not an annotatable column'])",
+  "column.ontology": "prompt_jev(state_text, 'Which ontology should be searched for a term that annotates this column?', choice := ['ENVO: environments, biomes, habitats and environmental materials', 'NCBITaxon: organisms and taxa at every rank', 'PATO: qualities and attributes of things (size, sex, age, colour)', 'UO: units of measurement (meter, degree Celsius, percent)', 'OBI: investigations, assays, protocols, devices and specimens', 'IAO: information artifacts, data items, identifiers and documents', 'PCO: populations, communities and their collective properties', 'BCO: biological collections, sampling and identification processes', 'GAZ: named geographic places and administrative regions', 'RO: relations between entities (part of, located in, participates in)', 'TAXRANK: taxonomic ranks (species, genus, family, order)', 'GENEPIO: sample collection, identification and metadata fields'])",
+  "column.ontology_fits": "prompt_jev(state_text, 'Does the ontology described in the state contain the right kind of term for annotating this column?', noul := TRUE)",
+  "term.fits": "prompt_jev(state_text, 'Is the candidate ontology term a correct annotation for the described column, site or dataset: the right concept at an appropriate specificity, not merely related?', noul := TRUE)",
+  "term.fits.chooser": "prompt_jev(state_text, 'Is the candidate ontology term the correct term for the value the user wants to annotate with: the right concept at an appropriate specificity, not merely related?', noul := TRUE)",
+  "avu.value_kind": "prompt_jev(state_text, 'What should the AVU value be?', choice := ['the term label', 'the site code', 'the column name', 'the most frequent data value'])",
+  "avu.keep": "prompt_jev(state_text, 'Given the annotations already selected for this dataset, does this annotation add correct, non-redundant information worth keeping?', noul := TRUE)"
+ },
  "lock_sha": "0190586d51b5d961dab9bf972e4683ebbf2356d6adf1911a5b2d63cee3ab01e2"
 }

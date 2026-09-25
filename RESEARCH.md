@@ -211,5 +211,11 @@ Every fact names where it was verified. Re-check anything marked `stale_after`.
   confidence DOUBLE)` for choice, a weighted position for score, a DOUBLE for noul. Guidance:
   confidence under ~0.6 signals overlapping or missing options; keep criteria disjoint and
   phrased as questions.
+- M4b (2026-09-25): the `motherduck` extension installs and loads in this repo's venv
+  (duckdb 1.5.5; `INSTALL motherduck; LOAD motherduck`). No `MOTHERDUCK_TOKEN` is exported in
+  the shells used here, so the live path (`md:` attach, `prompt_jev` answers, the pinned
+  STRUCT) is coded and doctor-checked but not yet exercised; every hosted test runs on a
+  local stand-in runner. The first real run is `MOTHERDUCK_TOKEN=... hosted score --dry-run`
+  then without `--dry-run` on the 285 term.fits states (about 72 KB of input text).
 - MotherDuck can attach `ducklake:` catalogs (managed DuckLake in preview). The `motherduck`
   DuckDB extension is not installed in `~/.mesa/.venv`'s duckdb 1.5.5 today.

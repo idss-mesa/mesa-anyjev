@@ -9,6 +9,15 @@ All notable changes to the mesa-anyjev package. The format follows
 
 ### Added
 
+- Milestone M4b: hosted Jev on MotherDuck, policy-gated. `HostedJevProvider` renders the
+  frozen questions as `prompt_jev` SQL constants (pinned per question in
+  `questions.lock.json` as `hosted_sql`, outside the lock sha), parses the pinned return
+  shapes, re-orders probabilities into the frozen option order and abstains on unmatched
+  values, bad sums or NULLs; `mesa-anyjev hosted score --source labels|run [--dry-run]`
+  records a sidecar run with `data_left_host` and writes its own results file; the
+  `hosted_allowed` gate (off by default; allow-listed roots, `mesa.hosted_inference=allow`,
+  local sources) refuses everything else; the doctor checks the extension, token presence,
+  attach and a fixture. mesa-mcp pin bumped to the plugin-loader merge (95a636a).
 - Milestone M4: mesa-mcp integration. `DecisionService` (one lock with a bounded wait,
   human picks as overrides, labels and link changes, candidates read back from the sidecar);
   the `mesa_decide_annotate|apply|explain|feedback|health` tools registered into mesa-mcp's

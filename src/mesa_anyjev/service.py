@@ -39,6 +39,47 @@ class DeciderBusy(RuntimeError):
     """The decider lock could not be taken within ``max_wait_s``."""
 
 
+class HostedDisabled(PermissionError):
+    """A hosted provider was requested but the policy does not allow the state to leave
+    this host for that source (DESIGN D16)."""
+
+
+def hosted_allowed(
+    cfg: Config,
+    *,
+    project_root: str | None = None,
+    local_source: bool = False,
+    project_avus: dict[str, str] | None = None,
+) -> tuple[bool, str]:
+    """(allowed, reason). ``off`` refuses everything. ``allowlist`` allows a local source
+    (labels, fixtures, a sidecar run on this host) when ``hosted_allow_local_sources`` is
+    true, and a project when its root is listed or carries ``mesa.hosted_inference=allow``."""
+    mode = cfg.policy.hosted_providers
+    if mode == "off":
+        return False, "policy.hosted_providers is off (state would leave this host)"
+    if local_source:
+        if cfg.policy.hosted_allow_local_sources:
+            return True, "local source allowed by policy.hosted_allow_local_sources"
+        return False, "policy.hosted_allow_local_sources is false"
+    if project_root is None:
+        return False, "no project root to check against the allow-list"
+    root = project_root.rstrip("/")
+    if any(
+        root == r.rstrip("/") or root.startswith(r.rstrip("/") + "/")
+        for r in cfg.policy.hosted_allow_project_roots
+    ):
+        return True, f"{root} is in policy.hosted_allow_project_roots"
+    if (project_avus or {}).get("mesa.hosted_inference") == "allow":
+        return True, f"{root} carries mesa.hosted_inference=allow"
+    return False, f"{root} is neither allow-listed nor tagged mesa.hosted_inference=allow"
+
+
+def require_hosted(cfg: Config, **kw: Any) -> None:
+    ok, reason = hosted_allowed(cfg, **kw)
+    if not ok:
+        raise HostedDisabled(reason)
+
+
 def build_collaborators(
     cfg: Config,
     *,

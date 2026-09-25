@@ -1403,7 +1403,7 @@ requires-dist = [
     { name = "jsonschema", marker = "extra == 'dev'", specifier = ">=4" },
     { name = "mcp", marker = "extra == 'e2e'", specifier = ">=2,<3" },
     { name = "mesa-ducklake", git = "https://github.com/idss-mesa/mesa-ducklake?rev=7bc143fefb093f0a2ace748a7036598147533ca0" },
-    { name = "mesa-mcp", git = "https://github.com/idss-mesa/mesa-mcp?rev=8fbaedf850301146b38b997774ab7aed1d0cb179" },
+    { name = "mesa-mcp", git = "https://github.com/idss-mesa/mesa-mcp?rev=95a636a1bd3413044f0040eeacc38c538faa2012" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.10" },
     { name = "numpy", specifier = ">=1.24" },
     { name = "platformdirs", specifier = ">=4" },
@@ -1441,7 +1441,7 @@ dependencies = [
 [[package]]
 name = "mesa-mcp"
 version = "0.1.0"
-source = { git = "https://github.com/idss-mesa/mesa-mcp?rev=8fbaedf850301146b38b997774ab7aed1d0cb179#8fbaedf850301146b38b997774ab7aed1d0cb179" }
+source = { git = "https://github.com/idss-mesa/mesa-mcp?rev=95a636a1bd3413044f0040eeacc38c538faa2012#95a636a1bd3413044f0040eeacc38c538faa2012" }
 dependencies = [
     { name = "cachetools" },
     { name = "httpx" },
