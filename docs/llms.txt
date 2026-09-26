@@ -18,12 +18,14 @@ For the decisions and verified facts behind the design, read DESIGN.md and RESEA
 
 ## Concepts
 
+- [DataCite decisions](https://idss-mesa.github.io/mesa-anyjev/concepts/datacite/): The frozen DataCite vocabularies as questions: resource type as a yes/no per member, the others as a choice with a yes/no twin, and the record fragment for mesa_avu_apply_datacite. (draft)
 - [Decision graph](https://idss-mesa.github.io/mesa-anyjev/concepts/decision-graph/): The fixed-key questions mesa-anyjev asks from a dataset card to a written AVU, which provider answers each, and what happens below threshold. (draft)
 - [Hosted providers](https://idss-mesa.github.io/mesa-anyjev/concepts/hosted-providers/): Hosted Jev through MotherDuck prompt_jev as a third provider for the same questions, and the data-residency switch that keeps it off by default. (draft)
 - [Learning](https://idss-mesa.github.io/mesa-anyjev/concepts/learning/): Where labels come from, how L1 temperatures and L2 heads are fitted with leave-one-card-out, the guards against positives-only data, and how an artifact is promoted. (draft)
 - [Levels and policy](https://idss-mesa.github.io/mesa-anyjev/concepts/levels-and-policy/): What an AnyJev level and the calibration field promise, and the rules that turn a decision into auto, proposed, human or abstain. (draft)
 - [MCP tools](https://idss-mesa.github.io/mesa-anyjev/concepts/mcp-tools/): The mesa_decide_* tools inside mesa-mcp: annotate, apply with one question per candidate group, explain, feedback and health; how they register, and what the elicitation state carries. (draft)
 - [Provenance](https://idss-mesa.github.io/mesa-anyjev/concepts/provenance/): The mesa-anyjev sidecar: runs, decisions, options, groups, AVU links, human overrides and labels, and how it joins the mesa-ducklake AVU history. (draft)
+- [Second opinions](https://idss-mesa.github.io/mesa-anyjev/concepts/second-opinions/): Claude as a recorded second opinion on proposed terms (never a probability, never auto), the specificity step over child terms, and the planner audit. (draft)
 
 ## Bench
 

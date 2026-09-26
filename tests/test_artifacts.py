@@ -66,7 +66,13 @@ def test_load_refuses_model_and_lock_mismatch(tmp_path: Path) -> None:
     store = ArtifactStore(tmp_path, "fake", "lock" * 16)
     store.save(dec, {})
     store.promote(1)
+    # D24: a different lock refuses only when a question key the bundle carries is gone
     other_lock = ArtifactStore(tmp_path, "fake", "lock" * 16)
     other_lock.lock_sha = "x" * 64
+    assert other_lock.load_into(_decider()) >= 0  # no per_question -> nothing stale
+    stale = ArtifactStore(tmp_path / "stale", "fake", "lock" * 16)
+    stale.save(dec, {"per_question": {"gone.q": {"key": "0" * 16}}})
+    stale.promote(1)
+    stale.lock_sha = "x" * 64
     with pytest.raises(ValueError, match="lock"):
-        other_lock.load_into(_decider())
+        stale.load_into(_decider())

@@ -175,6 +175,48 @@ Every fact names where it was verified. Re-check anything marked `stale_after`.
   constraint, ON CONFLICT label dedup) with psycopg 3. No iRODS credentials exist on this
   host, so the `e2e` chooser tier is written and gated but not yet run.
 
+## M5 facts (2026-09-25)
+
+- `ant auth status` reports an active profile (`idss-mesa`) on this host, but the SDK raises
+  `CredentialsError: Credentials file not found at ~/.config/anthropic/credentials/idss-mesa.json`,
+  so no Claude call has been made from this host: the second-opinion provider records the
+  error in `diagnostics` and abstains (68 abstains on `bet_sorting`, "claude gave no answer"
+  on every proposal), which is the designed failure mode. `ant auth login` for that profile
+  is the one step missing before `annotate --second-opinion` and `plan --planner claude` run.
+- DataCite vocabularies frozen from `mesa_mcp.datacite.schema` (StrEnums): ResourceTypeGeneral
+  28, ContributorType 21, RelationType 23, DateType 10, DescriptionType 6 (NameType 2 and
+  RelatedIdentifierType 15 not asked). `mesa_avu_apply_datacite(target, record, naming)` takes
+  a DataCite 4.x `record` dict; `datacite --card` prints that fragment.
+- Adding the nine M5 questions rotated the lock sha (0190586d -> 9f9370e0); the promoted
+  local L2 bundle under the old lock is inherited because its only key (`term.fits`) is
+  unchanged (D24); `mesa-anyjev artifacts --backend hf` shows the inheritance.
+- First end-to-end bench (2026-09-25, `bench/results/2026-09-25/RedHatAI__Qwen3-8B-NVFP4.gateway.e2e.json`,
+  carc-fast at L0 through the gateway, dev profile, OLS fixtures auto, 7 cards x 2 reps x 2
+  planners, 96 min wall because the gateway planner on carc-tools streams at ~4.7 tok/s and
+  timed out on several runs): static planner rep-to-rep agreement 0.37 (Jaccard of proposed
+  AVU triples; 0.0 to 0.67 per card), consensus-all recall 0.25, consensus-majority recall
+  0.06; gateway planner 0.18 / 0.05 / 0.05 with 1 of 7 first reps fallen back to static.
+  Proposals per card were 1 to 9. The planner audit found ontologies the static planner
+  names but the model rejects on every card (`gaz`, `pato`, `uo`, `ro` most often) and none
+  the model accepts that the planner missed; with the gateway planner the model accepted
+  `pco`, `ro` and `taxrank` the planner had left out. Specificity opened 23 child groups
+  (children calls now recorded as fixtures) and replaced no parent: no child cleared
+  p(parent) + 0.10 at L0. Read as: at L0 on carc-fast the graph is far from repeatable and
+  the agentic consensus is mostly not recovered; the L2 head and curator labels are where
+  the next gains are, not the planner.
+- Serving speed (2026-09-25, measured through the tunnel, single stream, thinking on or off
+  makes no difference): carc-fast ~10 tok/s, carc-tools ~4.7 tok/s; four parallel requests
+  keep the same per-request rate (aggregate 34 and 10 tok/s), so the floor is per-step
+  latency (~100 ms and ~210 ms per token). The gateway's `/model/info` routes carc-tools,
+  carc-fast and ab-moe to `127.0.0.1` on the gateway host (sparky-2) and only carc-embed to
+  the interconnect, and this host's GB10 sat at 0% and 4 W during a carc-tools request, so
+  despite the README the chat backends share sparky-2's single GB10 (~273 GB/s) with each
+  other and the sandbox while sparky-1 idles. Moving the two chat models here, and checking
+  which FP4 kernel vLLM 0.21 picked on sm_121, are requests to `tredfear`.
+- neon-avu-eval `validated.json` is a list of per-(model, rep, card) entries each carrying an
+  `avus` list with `curie`, `resolves`, `obsolete`; `bench e2e` computes the consensus sets
+  from it (all models / at least two) instead of reading `metrics.json`.
+
 ## neon-avu-eval (labels and states)
 
 - 7 dataset cards (DP1.10003.001 brd_countdata, brd_perpoint; DP1.10022.001 bet_*), 42 runs

@@ -21,7 +21,15 @@ from typing import Any, Final, Literal
 
 from anyjev import Question
 
-from mesa_anyjev.registry import ASPECT_OPTIONS, ONTOLOGY_OPTIONS, VALUE_KINDS
+from mesa_anyjev.registry import (
+    ASPECT_OPTIONS,
+    DATACITE_CONTRIBUTOR_TYPES,
+    DATACITE_DATE_TYPES,
+    DATACITE_DESCRIPTION_TYPES,
+    DATACITE_RELATION_TYPES,
+    ONTOLOGY_OPTIONS,
+    VALUE_KINDS,
+)
 
 Scope = Literal["dataset", "column", "site", "avu"]
 
@@ -78,6 +86,52 @@ Q_KEEP_AVU: Final = Question.noul(
 )
 
 
+# -- M5: the planner audit and the DataCite vocabularies ------------------------------------------
+Q_DATASET_ONTOLOGY_APPLIES: Final = Question.noul(
+    "Does this ontology apply to the dataset as a whole: would at least one of its terms "
+    "correctly describe what the dataset measures, observes, samples or records?",
+    name="dataset.ontology_applies",
+)
+
+Q_DATACITE_RESOURCE_TYPE_FITS: Final = Question.noul(
+    "Is the DataCite ResourceTypeGeneral value the right general type for this resource?",
+    name="datacite.resource_type_fits",
+)
+Q_DATACITE_CONTRIBUTOR_TYPE: Final = Question.choice(
+    "Which DataCite ContributorType best describes this contributor's role?",
+    DATACITE_CONTRIBUTOR_TYPES,
+    name="datacite.contributor_type",
+)
+Q_DATACITE_CONTRIBUTOR_TYPE_FITS: Final = Question.noul(
+    "Is the DataCite ContributorType value the right role for this contributor?",
+    name="datacite.contributor_type_fits",
+)
+Q_DATACITE_RELATION_TYPE: Final = Question.choice(
+    "Which DataCite RelationType describes how this resource relates to the related identifier?",
+    DATACITE_RELATION_TYPES,
+    name="datacite.relation_type",
+)
+Q_DATACITE_RELATION_TYPE_FITS: Final = Question.noul(
+    "Is the DataCite RelationType value the right relation from this resource to the related "
+    "identifier?",
+    name="datacite.relation_type_fits",
+)
+Q_DATACITE_DATE_TYPE: Final = Question.choice(
+    "Which DataCite DateType describes this date?",
+    DATACITE_DATE_TYPES,
+    name="datacite.date_type",
+)
+Q_DATACITE_DATE_TYPE_FITS: Final = Question.noul(
+    "Is the DataCite DateType value the right type for this date?",
+    name="datacite.date_type_fits",
+)
+Q_DATACITE_DESCRIPTION_TYPE: Final = Question.choice(
+    "Which DataCite DescriptionType describes this description text?",
+    DATACITE_DESCRIPTION_TYPES,
+    name="datacite.description_type",
+)
+
+
 @dataclass(frozen=True)
 class QuestionSpec:
     question: Question
@@ -94,6 +148,21 @@ QUESTIONS: Final[dict[str, QuestionSpec]] = {
     "term.fits.chooser": QuestionSpec(Q_TERM_FITS_CHOOSER, "column"),
     "avu.value_kind": QuestionSpec(Q_VALUE_KIND, "avu"),
     "avu.keep": QuestionSpec(Q_KEEP_AVU, "avu"),
+    "dataset.ontology_applies": QuestionSpec(Q_DATASET_ONTOLOGY_APPLIES, "dataset"),
+    "datacite.resource_type_fits": QuestionSpec(Q_DATACITE_RESOURCE_TYPE_FITS, "dataset"),
+    "datacite.contributor_type": QuestionSpec(
+        Q_DATACITE_CONTRIBUTOR_TYPE, "dataset", twin_id="datacite.contributor_type_fits"
+    ),
+    "datacite.contributor_type_fits": QuestionSpec(Q_DATACITE_CONTRIBUTOR_TYPE_FITS, "dataset"),
+    "datacite.relation_type": QuestionSpec(
+        Q_DATACITE_RELATION_TYPE, "dataset", twin_id="datacite.relation_type_fits"
+    ),
+    "datacite.relation_type_fits": QuestionSpec(Q_DATACITE_RELATION_TYPE_FITS, "dataset"),
+    "datacite.date_type": QuestionSpec(
+        Q_DATACITE_DATE_TYPE, "dataset", twin_id="datacite.date_type_fits"
+    ),
+    "datacite.date_type_fits": QuestionSpec(Q_DATACITE_DATE_TYPE_FITS, "dataset"),
+    "datacite.description_type": QuestionSpec(Q_DATACITE_DESCRIPTION_TYPE, "dataset"),
 }
 
 LOCK_PATH: Final = Path(__file__).resolve().parents[2] / "questions.lock.json"

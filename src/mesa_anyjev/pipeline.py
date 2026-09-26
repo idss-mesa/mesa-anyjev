@@ -9,6 +9,7 @@ provenance sidecar before the function returns.
 
 from __future__ import annotations
 
+import logging
 import time
 from collections.abc import Sequence
 from dataclasses import dataclass, field
@@ -46,6 +47,7 @@ from mesa_anyjev.questions import (
     Q_COLUMN_ASPECT,
     Q_COLUMN_ONTOLOGY,
     Q_COLUMN_ONTOLOGY_FITS,
+    Q_DATASET_ONTOLOGY_APPLIES,
     Q_KEEP_AVU,
     Q_TERM_FITS,
     Q_VALUE_KIND,
@@ -62,11 +64,13 @@ from mesa_anyjev.states import (
     avu_state,
     candidate_state,
     column_state,
+    dataset_ontology_state,
     ontology_state,
     state_sha256,
     value_kind_state,
 )
 
+logger = logging.getLogger(__name__)
 ANYJEV_COMMIT = "795a4970b47218b7c0686cd579d691fc2cf8df2f"
 MAX_TAXON_AVUS = 2
 
@@ -102,6 +106,7 @@ class AnnotationRun:
     missing_labels: int
     seconds: float
     outcomes: dict[str, int] = field(default_factory=dict)
+    audit: dict[str, Any] = field(default_factory=dict)
 
     def to_eval_result(self) -> dict[str, Any]:
         """The neon-avu-eval result shape, so its scoring scripts run unchanged."""
@@ -163,6 +168,7 @@ class _Recorder:
         missing_labels: int = 0,
         outcome_override: Outcome | None = None,
         options_meta: Sequence[Candidate] | None = None,
+        parent_decision_id: UUID | None = None,
     ) -> tuple[DecisionRow, Outcome]:
         self.seq += 1
         t = (
@@ -177,6 +183,7 @@ class _Recorder:
             run_id=self.run_id,
             seq=self.seq,
             group_id=group_id,
+            parent_decision_id=parent_decision_id,
             question_id=rec.question_id,
             question_key=rec.question_key,
             kind=rec.kind,
@@ -312,8 +319,10 @@ class Annotator:
         store: ProvenanceStore,
         cfg: Config,
         actor: str,
+        second_opinion: Any | None = None,
     ) -> None:
         self.provider = provider
+        self.second_opinion = second_opinion
         self.planner = planner
         self.ols = ols
         self.policy = policy
@@ -376,6 +385,29 @@ class Annotator:
             if plan.ontologies
             else frozenset(e.id for e in ONTOLOGY_REGISTRY)
         )
+
+        # Q0 dataset.ontology_applies: the planner audit (M5), recorded, never writes -------------
+        audit: dict[str, Any] = {}
+        if self.cfg.policy.audit_planner:
+            entries = list(ONTOLOGY_REGISTRY)
+            recs, miss = self._decide(
+                [dataset_ontology_state(card, e.option_text) for e in entries],
+                Q_DATASET_ONTOLOGY_APPLIES,
+            )
+            missing_total += miss
+            says_yes: set[str] = set()
+            for e, r in zip(entries, recs, strict=True):
+                _, out = rec.record(r, scope="dataset", missing_labels=miss)
+                if out in ("auto", "proposed"):
+                    says_yes.add(e.id)
+            planned = set(plan.ontologies) if plan.ontologies else set()
+            audit = {
+                "planner": sorted(planned),
+                "model": sorted(says_yes),
+                "agree": sorted(planned & says_yes),
+                "planner_only": sorted(planned - says_yes),
+                "model_only": sorted(says_yes - planned),
+            }
 
         # Q1 column.annotate, staged over every non-identifier column ------------------------------
         live: list[ColumnInfo] = []
@@ -516,7 +548,9 @@ class Annotator:
                 )
                 missing_total += p[1]
                 if p[0] is not None:
-                    (proposals if p[0].outcome in ("auto", "proposed") else rejected).append(p[0])
+                    (
+                        proposals if p[0].outcome in ("auto", "proposed", "escalated") else rejected
+                    ).append(p[0])
 
         # Q5 site environment ------------------------------------------------------------------------------
         for site in card.sites:
@@ -534,7 +568,9 @@ class Annotator:
             )
             missing_total += p[1]
             if p[0] is not None:
-                (proposals if p[0].outcome in ("auto", "proposed") else rejected).append(p[0])
+                (
+                    proposals if p[0].outcome in ("auto", "proposed", "escalated") else rejected
+                ).append(p[0])
 
         # Q6 dataset taxon -----------------------------------------------------------------------------------
         taxon_q = list(plan.taxon_queries)
@@ -686,6 +722,7 @@ class Annotator:
             missing_total,
             seconds,
             dict(rec.outcomes),
+            audit,
         )
 
     def _rank_group(
@@ -761,6 +798,21 @@ class Annotator:
             )
             out_props.append(prop)
         winner = out_props[0]
+        if winner.outcome in ("auto", "proposed"):
+            winner = _specificity(self, rec, card, scope, target, aspect, ont, winner)
+            out_props[0] = winner
+        if self.second_opinion is not None and winner.outcome == "proposed":
+            _second_opinion(
+                self,
+                self.second_opinion,
+                rec,
+                winner,
+                ranked,
+                scope,
+                column_name,
+                site_code,
+                group.group_id,
+            )
         top_p = winner.p or 0.0
         second = ranked[1][1].p_true if len(ranked) > 1 else 0.0
         self.store.update_group(
@@ -773,6 +825,145 @@ class Annotator:
             missing_labels=miss,
         )
         return winner, miss, out_props
+
+
+def _specificity(
+    self: Annotator,
+    rec: _Recorder,
+    card: DatasetCard,
+    scope: str,
+    target: ColumnInfo | SiteInfo | None,
+    aspect: str,
+    ont: str,
+    winner: Proposal,
+) -> Proposal:
+    """Q4b (M5): ask term.fits over the winner's children; a child replaces the parent when
+    p(child) >= p(parent) + delta. Children come from OLS (recorded fixtures may lack them)."""
+    if not self.cfg.policy.specificity or not winner.candidate.has_children:
+        return winner
+    try:
+        children = self.ols.children(ont, winner.candidate.iri)
+    except Exception as exc:
+        logger.info("specificity: children unavailable for %s (%s)", winner.candidate.curie, exc)
+        return winner
+    children = [c for c in children if c.curie != winner.candidate.curie][
+        : self.cfg.policy.max_candidates
+    ]
+    if not children:
+        return winner
+    column_name = target.name if isinstance(target, ColumnInfo) else None
+    site_code = target.code if isinstance(target, SiteInfo) else None
+    group = rec.group(
+        question_id="term.fits",
+        scope=scope,
+        column_name=column_name,
+        site_code=site_code,
+        aspect=aspect,
+        ontology_id=ont,
+        search_json={"specificity_of": winner.candidate.curie, "children": len(children)},
+        n_candidates=len(children),
+        outcome="abstain",
+        escalated_from=winner.group_id,
+    )
+    states = [
+        candidate_state(card, scope, target, aspect, c.as_state(), len(children)) for c in children
+    ]
+    recs, miss = self._decide(states, Q_TERM_FITS)
+    rows = [
+        rec.record(
+            r,
+            scope=scope,
+            column_name=column_name,
+            site_code=site_code,
+            group_id=group.group_id,
+            missing_labels=miss,
+            options_meta=[c],
+            parent_decision_id=winner.decision_id,
+        )
+        for r, c in zip(recs, children, strict=True)
+    ]
+    best_i = max(range(len(recs)), key=lambda i: recs[i].p_true or 0.0)
+    best, (row, out) = recs[best_i], rows[best_i]
+    p_child, p_parent = best.p_true or 0.0, winner.p or 0.0
+    replaces = out in ("auto", "proposed") and p_child >= p_parent + float(
+        self.cfg.policy.specificity_delta
+    )
+    self.store.update_group(
+        group.group_id,
+        winner_decision_id=row.decision_id,
+        top_p=p_child,
+        group_margin=p_child - p_parent,
+        level=best.level,
+        outcome=out if replaces else "rejected",
+        missing_labels=miss,
+    )
+    if not replaces:
+        return winner
+    child = children[best_i]
+    return Proposal(
+        link_id=uuid4(),
+        group_id=group.group_id,
+        decision_id=row.decision_id,
+        avu={},
+        candidate=child,
+        scope=scope,
+        column_name=column_name,
+        site_code=site_code,
+        aspect=aspect,
+        value_kind=winner.value_kind,
+        p=best.p_true,
+        level=best.level,
+        outcome=out,
+        rationale=(
+            f"p(fits)={p_child:.2f} {best.level}; more specific than "
+            f"{winner.candidate.curie} (p={p_parent:.2f})"
+        ),
+    )
+
+
+def _second_opinion(
+    self: Annotator,
+    provider: Any,
+    rec: _Recorder,
+    winner: Proposal,
+    ranked: list[Any],
+    scope: str,
+    column_name: str | None,
+    site_code: str | None,
+    group_id: UUID,
+) -> None:
+    """M5: Claude answers term.fits over the top candidates; recorded at level none with the
+    winner as parent. Agreement is noted on the proposal; a disagreement (No to the winner and
+    Yes to another candidate) escalates it to a human."""
+    top = ranked[: max(1, int(self.cfg.claude.second_opinion_top_k))]
+    states = [r.state for _, r, _ in top]
+    recs = provider.decide_batch(states, Q_TERM_FITS)
+    verdict: dict[str, str] = {}
+    for (cand, _, _), r in zip(top, recs, strict=True):
+        rec.record(
+            r,
+            scope=scope,
+            column_name=column_name,
+            site_code=site_code,
+            group_id=group_id,
+            parent_decision_id=winner.decision_id,
+        )
+        verdict[cand.curie] = (
+            "yes" if r.answer_index == 0 else ("no" if r.answer_index == 1 else "none")
+        )
+    on_winner = verdict.get(winner.candidate.curie, "none")
+    other_yes = [c for c, v in verdict.items() if v == "yes" and c != winner.candidate.curie]
+    if on_winner == "yes":
+        winner.rationale += "; claude agrees"
+    elif on_winner == "no":
+        winner.outcome = "escalated"
+        winner.rationale += (
+            f"; claude disagrees (prefers {', '.join(other_yes[:2])})"
+            if other_yes
+            else "; claude says no"
+        )
+    else:
+        winner.rationale += "; claude gave no answer"
 
 
 def _prompts(backend: Any) -> int:

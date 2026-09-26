@@ -189,7 +189,21 @@ class DecisionService:
             raise DeciderBusy(f"decider busy for more than {self.max_wait_s}s")
 
     # -- decide phase -----------------------------------------------------------------------------
-    def annotate(self, card: DatasetCard, *, actor: str) -> AnnotationRun:
+    def second_opinion_provider(self, enabled: bool | None = None) -> Any | None:
+        """The Claude second-opinion provider when ``claude.second_opinion`` (or the flag) is
+        on; built lazily and cached. Credentials resolve through the SDK (``ant auth login``)."""
+        on = self.cfg.claude.second_opinion if enabled is None else enabled
+        if not on:
+            return None
+        if getattr(self, "_second_opinion", None) is None:
+            from mesa_anyjev.providers.claude_provider import ClaudeStructuredProvider
+
+            self._second_opinion = ClaudeStructuredProvider(self.cfg.claude)
+        return self._second_opinion
+
+    def annotate(
+        self, card: DatasetCard, *, actor: str, second_opinion: bool | None = None
+    ) -> AnnotationRun:
         self._acquire()
         try:
             return Annotator(
@@ -200,6 +214,7 @@ class DecisionService:
                 store=self.store,
                 cfg=self.cfg,
                 actor=actor,
+                second_opinion=self.second_opinion_provider(second_opinion),
             ).annotate(card)
         finally:
             self.lock.release()

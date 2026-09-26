@@ -22,6 +22,9 @@ MESA_ANYJEV_ENGINE=gateway uv run pytest -q -m engine tests/engine   # needs the
 MESA_ANYJEV_ENGINE=hf uv run pytest -q -m engine tests/engine/test_hf_l2.py   # CUDA host, hf extra, ~2 min load
 MESA_ANYJEV_TEST_PG_DSN=postgresql://... uv run pytest -q -m requires_postgres  # docker postgres:16 (docs/develop/testing.md)
 MESA_ANYJEV_POLICY__HOSTED_PROVIDERS=allowlist uv run mesa-anyjev hosted score --dry-run   # MotherDuck; needs MOTHERDUCK_TOKEN for a real run
+uv run mesa-anyjev annotate --card <card.md> --second-opinion   # Claude second opinion (ant auth login profile)
+uv run mesa-anyjev datacite --card <card.md>                    # DataCite resource/description types
+uv run mesa-anyjev bench e2e --planners static,gateway --reps 2  # rep agreement + consensus recall
 ```
 
 ## Fixed decisions (do not re-litigate; details in DESIGN.md)

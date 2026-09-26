@@ -7,8 +7,17 @@ All notable changes to the mesa-anyjev package. The format follows
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-09-25
+
 ### Added
 
+- Milestone M5: the Claude structured-output provider as a recorded second opinion
+  (level none, never a probability; a disagreement escalates a proposal to a human),
+  the specificity step over a proposed term's children (a child replaces the parent when
+  p(child) >= p(parent) + 0.10), the `dataset.ontology_applies` planner audit, the frozen
+  DataCite vocabularies with their questions and the `datacite` verb, `bench e2e`
+  (rep-to-rep agreement and consensus recall per planner), and per-question-key artifact
+  validity so adding questions no longer orphans promoted bundles (D24).
 - Milestone M4b: hosted Jev on MotherDuck, policy-gated. `HostedJevProvider` renders the
   frozen questions as `prompt_jev` SQL constants (pinned per question in
   `questions.lock.json` as `hosted_sql`, outside the lock sha), parses the pinned return
