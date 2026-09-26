@@ -26,9 +26,9 @@ repo_args=()
 [ -n "$repo" ] && repo_args=(--repo "$repo")
 
 snapshot() {
-  # one line per check: "<name>\t<bucket>"; buckets: pass fail pending skipping cancel
-  gh pr checks "$ref" "${repo_args[@]}" --json name,bucket \
-    --jq '.[] | "\(.name)\t\(.bucket)"' 2>/dev/null | sort || true
+  # one line per check: "<name>\t<state>" from gh's tab-separated table (name, state,
+  # duration, url); states: pass fail pending skipping cancel. gh 2.45 has no --json here.
+  gh pr checks "$ref" "${repo_args[@]}" 2>/dev/null | awk -F'\t' 'NF >= 2 {print $1 "\t" $2}' | sort || true
 }
 
 start=$(date +%s)
