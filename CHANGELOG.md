@@ -7,6 +7,10 @@ All notable changes to the mesa-anyjev package. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- mesa-mcp pin bumped to c74f3aa (PR #5: `record_avu_change(s)` return the Snapshot).
+
 ## [0.1.0] - 2026-09-25
 
 ### Added
