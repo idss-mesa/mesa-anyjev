@@ -87,7 +87,7 @@ include = ["src/mesa_anyjev", "tests", "README.md", "CHANGELOG.md", "LICENSE", "
 
 [tool.uv.sources]
 anyjev = { git = "https://github.com/nokia-applied-research/AnyJev", rev = "795a4970b47218b7c0686cd579d691fc2cf8df2f" }
-mesa-mcp = { git = "https://github.com/idss-mesa/mesa-mcp", rev = "95a636a1bd3413044f0040eeacc38c538faa2012" }
+mesa-mcp = { git = "https://github.com/idss-mesa/mesa-mcp", rev = "c74f3aa1a3caade558f063f4f637a9127dba82d9" }
 mesa-ducklake = { git = "https://github.com/idss-mesa/mesa-ducklake", rev = "7bc143fefb093f0a2ace748a7036598147533ca0" }
 
 [tool.ruff]

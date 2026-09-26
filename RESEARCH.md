@@ -164,9 +164,11 @@ Every fact names where it was verified. Re-check anything marked `stale_after`.
   picker (`mesa_avu_apply_term`) offers at most 8 candidates as an `iri` enum with
   `enumNames`, message `Which ENVO term describes 'value'?`, and accepts only an IRI it
   offered; decline or cancel raises `invalid_argument`.
-- `record_avu_change(s)` still return `None` on main (mesa-mcp PR #5 open). The mirror uses a
-  process-wide `DuckLakeClient` singleton (`get_default_client()`), so `mesa_decide_apply`
-  passes that client to its own `record_changes` and keeps the `mesa-anyjev:` source tag.
+- `record_avu_change(s)` return the committed `Snapshot | None` since mesa-mcp PR #5 merged
+  (c74f3aa, 2026-09-25; the pin follows it). The mirror uses a process-wide `DuckLakeClient`
+  singleton (`get_default_client()`), so `mesa_decide_apply` still passes that client to its
+  own `record_changes` to keep the `mesa-anyjev:` source tag; the Snapshot return matters
+  for AVUs written through mesa-mcp's own tools, whose snapshot ids can now be linked.
 - Conformance (`tests/test_spec_conformance_2026_07_28.py`) asserts per tool: a 2020-12
   `$schema` on the input (and any output) schema that passes `check_schema`, a non-empty
   `_meta` with `io.mesa/surface`. mesa-anyjev's five tools pass it in mesa-mcp's own suite
