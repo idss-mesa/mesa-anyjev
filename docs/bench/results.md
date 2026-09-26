@@ -34,6 +34,25 @@ over seven leave-one-card-out folds. `cov@5%` is the share of items that can be 
 before the error rate on the answered set exceeds 5%; `flip` is the answer change under
 option reversal (choice) or phrasing swap (yes/no). Every number below names its JSON.
 
+## End to end: the whole graph, twice per card (carc-fast at L0), 2026-09-25
+
+`bench e2e` runs the decision graph on the seven fixture cards, two repetitions per planner,
+and reports agreement rather than asserting determinism: the Jaccard overlap of proposed AVU
+triples between repetitions, and the recall of the neon-avu-eval consensus terms (proposed by
+every agentic model, or by at least two). Source: `bench/results/2026-09-25/RedHatAI__Qwen3-8B-NVFP4.gateway.e2e.json`.
+
+| planner | rep agreement | consensus-all recall | consensus-majority recall | fallbacks |
+|---|---|---|---|---|
+| static | 0.37 | 0.25 | 0.06 | 0 / 7 |
+| gateway (carc-tools) | 0.18 | 0.05 | 0.05 | 1 / 7 |
+
+At L0 on carc-fast the graph is far from repeatable (per card 0.0 to 0.67) and recovers
+little of the agentic consensus; proposals per card were 1 to 9. The gateway planner made it
+worse and cost 96 minutes of wall time at ~4.7 tokens per second. The planner audit
+(`dataset.ontology_applies`) rejected `gaz`, `pato`, `uo` and `ro` on most cards where the
+static planner had named them. Specificity opened 23 child groups and replaced no parent.
+These are the numbers the L2 head and curator labels have to move.
+
 ## Qwen/Qwen3-8B bf16 on the GB10 workstation (local weights), 2026-09-25
 
 The same labels through AnyJev's `HFBackend` on this host: the full vocabulary is read (no

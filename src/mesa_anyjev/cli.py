@@ -8,6 +8,7 @@ import json
 import os
 import sys
 from collections.abc import Sequence
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -204,6 +205,11 @@ def _cmd_annotate(args: argparse.Namespace, cfg: Config) -> int:
     from mesa_anyjev.pipeline import Annotator
 
     provider, planner, ols, policy, store = _make_collaborators(cfg, args)
+    second: Any = None
+    if args.second_opinion or cfg.claude.second_opinion:
+        from mesa_anyjev.providers.claude_provider import ClaudeStructuredProvider
+
+        second = ClaudeStructuredProvider(cfg.claude)
     try:
         run = Annotator(
             provider=provider,
@@ -213,10 +219,16 @@ def _cmd_annotate(args: argparse.Namespace, cfg: Config) -> int:
             store=store,
             cfg=cfg,
             actor=args.actor,
+            second_opinion=second,
         ).annotate(load_card(args.card))
     finally:
         store.close()
     result = run.to_eval_result()
+    if run.audit:
+        print(
+            f"planner audit: agree={run.audit['agree']} planner_only={run.audit['planner_only']} "
+            f"model_only={run.audit['model_only']}"
+        )
     if args.out:
         Path(args.out).parent.mkdir(parents=True, exist_ok=True)
         Path(args.out).write_text(
@@ -230,6 +242,28 @@ def _cmd_annotate(args: argparse.Namespace, cfg: Config) -> int:
         print(
             f"  {p.outcome:9s} {p.avu['attribute']} = {p.avu['value']!r} [{p.avu['unit']}] {p.rationale}"
         )
+    return EXIT_OK
+
+
+def _cmd_datacite(args: argparse.Namespace, cfg: Config) -> int:
+    from mesa_anyjev.cards import load_card
+    from mesa_anyjev.datacite import card_record, classify
+
+    if not args.card and not (args.vocabulary and args.text):
+        print("datacite needs --card or --vocabulary with --text", file=sys.stderr)
+        return EXIT_CONFIG
+    provider, _planner, _ols, policy, store = _make_collaborators(cfg, args)
+    profile = policy.profile(cfg.policy.profile)
+    try:
+        if args.card:
+            out = card_record(provider, load_card(args.card), policy=policy, profile=profile)
+        else:
+            out = classify(
+                provider, args.vocabulary, args.text, policy=policy, profile=profile
+            ).as_dict()
+    finally:
+        store.close()
+    print(json.dumps(out, indent=1, default=str))
     return EXIT_OK
 
 
@@ -386,7 +420,65 @@ def _cmd_learn(args: argparse.Namespace, cfg: Config) -> int:
     return EXIT_FAIL
 
 
+def _cmd_bench_e2e(args: argparse.Namespace, cfg: Config) -> int:
+    from mesa_anyjev.bench.e2e import consensus_from_validated, run_e2e
+    from mesa_anyjev.pipeline import Annotator
+
+    root = Path(__file__).resolve().parents[2] / "tests" / "fixtures"
+    cards = (
+        [Path(c) for c in args.cards.split(",")]
+        if args.cards
+        else sorted((root / "cards").glob("*.md"))
+    )
+    validated = (
+        Path(args.validated)
+        if args.validated
+        else root / "neon-avu-eval" / "results" / "validated.json"
+    )
+    consensus = consensus_from_validated(validated) if validated.exists() else None
+    provider, _p, ols, policy, store = _make_collaborators(cfg, args)
+
+    def make(planner_kind: str) -> Annotator:
+        from mesa_anyjev.service import build_collaborators
+
+        _prov, planner, _o, _pol, _s = build_collaborators(
+            cfg, planner_kind=planner_kind, store=store
+        )
+        return Annotator(
+            provider=provider,
+            planner=planner,
+            ols=ols,
+            policy=policy,
+            store=store,
+            cfg=cfg,
+            actor=args.actor,
+        )
+
+    try:
+        result = run_e2e(
+            make, cards, planners=args.planners.split(","), reps=args.reps, consensus=consensus
+        )
+    finally:
+        store.close()
+    date = args.date or datetime.now(tz=UTC).strftime("%Y-%m-%d")
+    out = (
+        Path(args.out) / date / f"{_model_for(cfg).replace('/', '__')}.{cfg.backend.kind}.e2e.json"
+    )
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(result, indent=1, default=str), encoding="utf-8")
+    for planner, r in result["planners"].items():
+        print(
+            f"{planner:8s} rep_agreement={r['rep_agreement_mean']} "
+            f"consensus_all_recall={r['consensus_all_recall_mean']} "
+            f"consensus_majority_recall={r['consensus_majority_recall_mean']}"
+        )
+    print(f"wrote {out}")
+    return EXIT_OK
+
+
 def _cmd_bench(args: argparse.Namespace, cfg: Config) -> int:
+    if args.verb == "e2e":
+        return _cmd_bench_e2e(args, cfg)
     from datetime import UTC, datetime
 
     from mesa_anyjev.bench.run import environment, markdown_table, run_task, write_results
@@ -447,7 +539,15 @@ def _cmd_artifacts(args: argparse.Namespace, cfg: Config) -> int:
         print(f"    fitted_on={m.get('fitted_on')} questions={list(m.get('per_question', {}))}")
         print(f"    loco={loco}")
     if not store.versions():
-        print(f"no artifacts under {store.dir}")
+        inherited = store.current()
+        if inherited is not None:
+            m = inherited.manifest
+            print(
+                f"no bundle under {store.dir}; inheriting {inherited.path} (D24: every question key still exists)"
+            )
+            print(f"    fitted_on={m.get('fitted_on')} questions={list(m.get('per_question', {}))}")
+        else:
+            print(f"no artifacts under {store.dir}")
     return EXIT_OK
 
 
@@ -511,7 +611,32 @@ def build_parser() -> argparse.ArgumentParser:
         "--level", choices=["raw", "L0", "L1", "L2", "auto"], help="override decider.level"
     )
     an.add_argument("--out", help="write the run in the neon-avu-eval result shape")
+    an.add_argument(
+        "--second-opinion",
+        action="store_true",
+        help="ask Claude the term question over each proposed group (recorded; disagreement escalates)",
+    )
     an.set_defaults(func=_cmd_annotate)
+
+    dc = sub.add_parser(
+        "datacite", parents=[common], help="DataCite vocabulary decisions for a card or a text"
+    )
+    dc.add_argument("--card", help="dataset card: resource type and description type")
+    dc.add_argument(
+        "--vocabulary",
+        choices=[
+            "ResourceTypeGeneral",
+            "ContributorType",
+            "RelationType",
+            "DateType",
+            "DescriptionType",
+        ],
+    )
+    dc.add_argument("--text", help="the text to classify with --vocabulary")
+    dc.add_argument(
+        "--backend", choices=["fake", "gateway", "hf", "composite"], help="override backend.kind"
+    )
+    dc.set_defaults(func=_cmd_datacite)
 
     fb = sub.add_parser("feedback", parents=[common], help="record a curator's pick on a group")
     fb.add_argument("--group-id", required=True)
@@ -561,7 +686,11 @@ def build_parser() -> argparse.ArgumentParser:
     le.set_defaults(func=_cmd_learn)
 
     be = sub.add_parser("bench", parents=[common], help="run the bench or render a results table")
-    be.add_argument("verb", choices=["run", "table"])
+    be.add_argument("verb", choices=["run", "table", "e2e"])
+    be.add_argument("--cards", help="comma-separated card paths (e2e; default: the fixture cards)")
+    be.add_argument("--planners", default="static", help="comma-separated planner kinds (e2e)")
+    be.add_argument("--reps", type=int, default=2, help="repetitions per card (e2e)")
+    be.add_argument("--validated", help="neon-avu-eval validated.json for consensus recall (e2e)")
     be.add_argument("--tasks", help="comma-separated task names (default: all with items)")
     be.add_argument("--levels", default="raw,L0,L1", help="comma-separated levels")
     be.add_argument("--no-loco", action="store_true")
@@ -607,7 +736,13 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     overrides: dict[str, Any] = {}
-    if getattr(args, "backend", None) and args.cmd in ("annotate", "learn", "bench", "artifacts"):
+    if getattr(args, "backend", None) and args.cmd in (
+        "annotate",
+        "learn",
+        "bench",
+        "artifacts",
+        "datacite",
+    ):
         overrides.setdefault("backend", {})["kind"] = args.backend
     if getattr(args, "level", None):
         overrides.setdefault("decider", {})["level"] = args.level

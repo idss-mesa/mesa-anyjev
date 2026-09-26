@@ -61,12 +61,49 @@ class ArtifactStore:
     def current(self) -> ArtifactVersion | None:
         pointer = self.dir / "CURRENT"
         if not pointer.exists():
-            return None
+            return self._inherited()
         name = pointer.read_text(encoding="utf-8").strip()
         for v in self.versions():
             if v.path.name == name:
                 return v
         return None
+
+    def _inherited(self) -> ArtifactVersion | None:
+        """No bundle under the current lock: the newest promoted bundle of a sibling lock
+        directory whose question keys all still exist (D24), else ``None``."""
+        parent = self.dir.parent
+        if not parent.exists():
+            return None
+        candidates: list[tuple[float, ArtifactVersion]] = []
+        for sibling in parent.iterdir():
+            if not sibling.is_dir() or sibling == self.dir:
+                continue
+            pointer = sibling / "CURRENT"
+            if not pointer.exists():
+                continue
+            path = sibling / pointer.read_text(encoding="utf-8").strip()
+            if not (path / "manifest.json").exists():
+                continue
+            m = _VERSION.match(path.name)
+            version = ArtifactVersion(int(m.group(1)) if m else 0, path)
+            if not self.stale_keys(version.manifest):
+                candidates.append((path.stat().st_mtime, version))
+        if not candidates:
+            return None
+        return max(candidates, key=lambda c: c[0])[1]
+
+    @staticmethod
+    def stale_keys(manifest: dict[str, Any]) -> list[str]:
+        """Question keys in the manifest that the current questions no longer produce."""
+        from mesa_anyjev.questions import QUESTIONS
+
+        live = {spec.question.key for spec in QUESTIONS.values()}
+        per_question = manifest.get("per_question") or {}
+        return sorted(
+            f"{qid}:{str(entry.get('key'))[:12]}"
+            for qid, entry in per_question.items()
+            if entry.get("key") not in live
+        )
 
     # -- writes ---------------------------------------------------------------------------------
     def save(self, decider: Any, manifest_extra: dict[str, Any]) -> ArtifactVersion:
@@ -111,7 +148,15 @@ class ArtifactStore:
         if manifest.get("model") != self.model:
             raise ValueError(f"artifact model {manifest.get('model')!r} != {self.model!r}")
         if manifest.get("questions_lock_sha") != self.lock_sha:
-            raise ValueError("artifact was fit under a different questions.lock.json (DESIGN D7)")
+            # D24: validity is per question key. A bundle fit under an older lock stays usable
+            # when every key it carries still exists unchanged; a reworded or removed question
+            # (its key gone) refuses.
+            missing = self.stale_keys(manifest)
+            if missing:
+                raise ValueError(
+                    "artifact was fit under a different questions.lock.json and these question "
+                    f"keys no longer exist: {', '.join(missing)} (DESIGN D7/D24)"
+                )
         fitted_on = manifest.get("fitted_on") or {}
         # composite reads its hidden states from the same local weights hf does, so an
         # hf-fitted bundle (heads) is valid there; nothing else crosses kinds (D5)

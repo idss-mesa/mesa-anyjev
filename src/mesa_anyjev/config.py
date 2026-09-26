@@ -90,6 +90,10 @@ class ClaudeConfig(_Section):
     model: str = "claude-opus-5"
     effort: Literal["low", "medium", "high", "xhigh", "max"] = "low"
     max_tokens: int = 1024
+    # M5: ask Claude the term.fits question over a proposed group's top candidates and record
+    # the answers as a second opinion (level none); a disagreement escalates to a human.
+    second_opinion: bool = False
+    second_opinion_top_k: int = 8
 
 
 class PolicyConfig(_Section):
@@ -99,6 +103,11 @@ class PolicyConfig(_Section):
     max_avus: int = 25
     proposal_size: int = 8
     max_wait_s: float = 30.0
+    # M5: specificity (a child term replaces its parent when p(child) >= p(parent) + delta)
+    # and the planner audit (dataset.ontology_applies per registry entry, recorded only).
+    specificity: bool = True
+    specificity_delta: float = 0.10
+    audit_planner: bool = True
     # Hosted providers send state off this host (DESIGN D16).
     hosted_providers: HostedMode = "off"
     hosted_allow_project_roots: list[str] = Field(default_factory=list)

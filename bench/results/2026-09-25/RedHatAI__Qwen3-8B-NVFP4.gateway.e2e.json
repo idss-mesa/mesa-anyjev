@@ -1,0 +1,762 @@
+{
+ "reps": 2,
+ "planners": {
+  "static": {
+   "cards": {
+    "DP1.10003.001.brd_countdata": {
+     "n_proposals": [
+      4,
+      2
+     ],
+     "rep_agreement": 0.5,
+     "planner_fallback": false,
+     "audit": {
+      "planner": [
+       "bco",
+       "envo",
+       "gaz",
+       "genepio",
+       "iao",
+       "ncbitaxon",
+       "obi",
+       "pato",
+       "pco",
+       "ro",
+       "taxrank",
+       "uo"
+      ],
+      "model": [
+       "bco",
+       "envo",
+       "genepio",
+       "iao",
+       "ncbitaxon",
+       "obi",
+       "pato",
+       "pco",
+       "taxrank"
+      ],
+      "agree": [
+       "bco",
+       "envo",
+       "genepio",
+       "iao",
+       "ncbitaxon",
+       "obi",
+       "pato",
+       "pco",
+       "taxrank"
+      ],
+      "planner_only": [
+       "gaz",
+       "ro",
+       "uo"
+      ],
+      "model_only": []
+     },
+     "consensus_all_recall": 0.5,
+     "consensus_majority_recall": 0.09090909090909091
+    },
+    "DP1.10003.001.brd_perpoint": {
+     "n_proposals": [
+      2,
+      1
+     ],
+     "rep_agreement": 0.5,
+     "planner_fallback": false,
+     "audit": {
+      "planner": [
+       "bco",
+       "envo",
+       "gaz",
+       "genepio",
+       "iao",
+       "ncbitaxon",
+       "obi",
+       "pato",
+       "pco",
+       "ro",
+       "taxrank",
+       "uo"
+      ],
+      "model": [
+       "bco",
+       "envo",
+       "gaz",
+       "genepio",
+       "iao",
+       "ncbitaxon",
+       "obi",
+       "pco",
+       "ro",
+       "taxrank",
+       "uo"
+      ],
+      "agree": [
+       "bco",
+       "envo",
+       "gaz",
+       "genepio",
+       "iao",
+       "ncbitaxon",
+       "obi",
+       "pco",
+       "ro",
+       "taxrank",
+       "uo"
+      ],
+      "planner_only": [
+       "pato"
+      ],
+      "model_only": []
+     },
+     "consensus_all_recall": 0.0,
+     "consensus_majority_recall": 0.07692307692307693
+    },
+    "DP1.10022.001.bet_archivepooling": {
+     "n_proposals": [
+      3,
+      2
+     ],
+     "rep_agreement": 0.25,
+     "planner_fallback": false,
+     "audit": {
+      "planner": [
+       "bco",
+       "envo",
+       "gaz",
+       "genepio",
+       "iao",
+       "ncbitaxon",
+       "obi",
+       "pato",
+       "pco",
+       "ro",
+       "taxrank",
+       "uo"
+      ],
+      "model": [
+       "bco",
+       "envo",
+       "genepio",
+       "iao",
+       "ncbitaxon",
+       "obi",
+       "pco",
+       "ro",
+       "taxrank"
+      ],
+      "agree": [
+       "bco",
+       "envo",
+       "genepio",
+       "iao",
+       "ncbitaxon",
+       "obi",
+       "pco",
+       "ro",
+       "taxrank"
+      ],
+      "planner_only": [
+       "gaz",
+       "pato",
+       "uo"
+      ],
+      "model_only": []
+     },
+     "consensus_all_recall": 0.0,
+     "consensus_majority_recall": 0.0
+    },
+    "DP1.10022.001.bet_expertTaxonomistIDProcessed": {
+     "n_proposals": [
+      3,
+      3
+     ],
+     "rep_agreement": 0.0,
+     "planner_fallback": false,
+     "audit": {
+      "planner": [
+       "bco",
+       "envo",
+       "gaz",
+       "genepio",
+       "iao",
+       "ncbitaxon",
+       "obi",
+       "pato",
+       "pco",
+       "ro",
+       "taxrank",
+       "uo"
+      ],
+      "model": [
+       "bco",
+       "envo",
+       "genepio",
+       "iao",
+       "ncbitaxon",
+       "obi",
+       "pco",
+       "taxrank",
+       "uo"
+      ],
+      "agree": [
+       "bco",
+       "envo",
+       "genepio",
+       "iao",
+       "ncbitaxon",
+       "obi",
+       "pco",
+       "taxrank",
+       "uo"
+      ],
+      "planner_only": [
+       "gaz",
+       "pato",
+       "ro"
+      ],
+      "model_only": []
+     },
+     "consensus_all_recall": 0.0,
+     "consensus_majority_recall": 0.0
+    },
+    "DP1.10022.001.bet_fielddata": {
+     "n_proposals": [
+      1,
+      3
+     ],
+     "rep_agreement": 0.3333333333333333,
+     "planner_fallback": false,
+     "audit": {
+      "planner": [
+       "bco",
+       "envo",
+       "gaz",
+       "genepio",
+       "iao",
+       "ncbitaxon",
+       "obi",
+       "pato",
+       "pco",
+       "ro",
+       "taxrank",
+       "uo"
+      ],
+      "model": [
+       "bco",
+       "envo",
+       "genepio",
+       "iao",
+       "ncbitaxon",
+       "obi",
+       "pco",
+       "ro",
+       "taxrank",
+       "uo"
+      ],
+      "agree": [
+       "bco",
+       "envo",
+       "genepio",
+       "iao",
+       "ncbitaxon",
+       "obi",
+       "pco",
+       "ro",
+       "taxrank",
+       "uo"
+      ],
+      "planner_only": [
+       "gaz",
+       "pato"
+      ],
+      "model_only": []
+     },
+     "consensus_all_recall": 0.25,
+     "consensus_majority_recall": 0.08333333333333333
+    },
+    "DP1.10022.001.bet_parataxonomistID": {
+     "n_proposals": [
+      2,
+      3
+     ],
+     "rep_agreement": 0.6666666666666666,
+     "planner_fallback": false,
+     "audit": {
+      "planner": [
+       "bco",
+       "envo",
+       "gaz",
+       "genepio",
+       "iao",
+       "ncbitaxon",
+       "obi",
+       "pato",
+       "pco",
+       "ro",
+       "taxrank",
+       "uo"
+      ],
+      "model": [
+       "bco",
+       "envo",
+       "gaz",
+       "genepio",
+       "iao",
+       "ncbitaxon",
+       "obi",
+       "pato",
+       "pco",
+       "taxrank",
+       "uo"
+      ],
+      "agree": [
+       "bco",
+       "envo",
+       "gaz",
+       "genepio",
+       "iao",
+       "ncbitaxon",
+       "obi",
+       "pato",
+       "pco",
+       "taxrank",
+       "uo"
+      ],
+      "planner_only": [
+       "ro"
+      ],
+      "model_only": []
+     },
+     "consensus_all_recall": 0.0,
+     "consensus_majority_recall": 0.0
+    },
+    "DP1.10022.001.bet_sorting": {
+     "n_proposals": [
+      3,
+      1
+     ],
+     "rep_agreement": 0.3333333333333333,
+     "planner_fallback": false,
+     "audit": {
+      "planner": [
+       "bco",
+       "envo",
+       "gaz",
+       "genepio",
+       "iao",
+       "ncbitaxon",
+       "obi",
+       "pato",
+       "pco",
+       "ro",
+       "taxrank",
+       "uo"
+      ],
+      "model": [
+       "bco",
+       "envo",
+       "gaz",
+       "genepio",
+       "iao",
+       "ncbitaxon",
+       "obi",
+       "pco",
+       "ro",
+       "taxrank"
+      ],
+      "agree": [
+       "bco",
+       "envo",
+       "gaz",
+       "genepio",
+       "iao",
+       "ncbitaxon",
+       "obi",
+       "pco",
+       "ro",
+       "taxrank"
+      ],
+      "planner_only": [
+       "pato",
+       "uo"
+      ],
+      "model_only": []
+     },
+     "consensus_all_recall": 1.0,
+     "consensus_majority_recall": 0.16666666666666666
+    }
+   },
+   "rep_agreement_mean": 0.369047619047619,
+   "consensus_all_recall_mean": 0.25,
+   "consensus_majority_recall_mean": 0.05969030969030969
+  },
+  "gateway": {
+   "cards": {
+    "DP1.10003.001.brd_countdata": {
+     "n_proposals": [
+      2,
+      5
+     ],
+     "rep_agreement": 0.0,
+     "planner_fallback": true,
+     "audit": {
+      "planner": [
+       "bco",
+       "envo",
+       "gaz",
+       "genepio",
+       "iao",
+       "ncbitaxon",
+       "obi",
+       "pato",
+       "pco",
+       "ro",
+       "taxrank",
+       "uo"
+      ],
+      "model": [
+       "bco",
+       "envo",
+       "genepio",
+       "iao",
+       "ncbitaxon",
+       "pato",
+       "pco",
+       "taxrank",
+       "uo"
+      ],
+      "agree": [
+       "bco",
+       "envo",
+       "genepio",
+       "iao",
+       "ncbitaxon",
+       "pato",
+       "pco",
+       "taxrank",
+       "uo"
+      ],
+      "planner_only": [
+       "gaz",
+       "obi",
+       "ro"
+      ],
+      "model_only": []
+     },
+     "consensus_all_recall": 0.0,
+     "consensus_majority_recall": 0.0
+    },
+    "DP1.10003.001.brd_perpoint": {
+     "n_proposals": [
+      4,
+      5
+     ],
+     "rep_agreement": 0.2857142857142857,
+     "planner_fallback": false,
+     "audit": {
+      "planner": [
+       "bco",
+       "envo",
+       "gaz",
+       "genepio",
+       "iao",
+       "ncbitaxon",
+       "obi",
+       "pato",
+       "uo"
+      ],
+      "model": [
+       "bco",
+       "envo",
+       "genepio",
+       "iao",
+       "ncbitaxon",
+       "obi",
+       "pco",
+       "ro",
+       "taxrank",
+       "uo"
+      ],
+      "agree": [
+       "bco",
+       "envo",
+       "genepio",
+       "iao",
+       "ncbitaxon",
+       "obi",
+       "uo"
+      ],
+      "planner_only": [
+       "gaz",
+       "pato"
+      ],
+      "model_only": [
+       "pco",
+       "ro",
+       "taxrank"
+      ]
+     },
+     "consensus_all_recall": 0.3333333333333333,
+     "consensus_majority_recall": 0.15384615384615385
+    },
+    "DP1.10022.001.bet_archivepooling": {
+     "n_proposals": [
+      2,
+      1
+     ],
+     "rep_agreement": 0.0,
+     "planner_fallback": false,
+     "audit": {
+      "planner": [
+       "bco",
+       "envo",
+       "gaz",
+       "iao",
+       "ncbitaxon",
+       "obi",
+       "taxrank"
+      ],
+      "model": [
+       "bco",
+       "envo",
+       "genepio",
+       "iao",
+       "ncbitaxon",
+       "obi",
+       "pco",
+       "ro",
+       "taxrank"
+      ],
+      "agree": [
+       "bco",
+       "envo",
+       "iao",
+       "ncbitaxon",
+       "obi",
+       "taxrank"
+      ],
+      "planner_only": [
+       "gaz"
+      ],
+      "model_only": [
+       "genepio",
+       "pco",
+       "ro"
+      ]
+     },
+     "consensus_all_recall": 0.0,
+     "consensus_majority_recall": 0.0
+    },
+    "DP1.10022.001.bet_expertTaxonomistIDProcessed": {
+     "n_proposals": [
+      9,
+      7
+     ],
+     "rep_agreement": 0.14285714285714285,
+     "planner_fallback": false,
+     "audit": {
+      "planner": [
+       "bco",
+       "envo",
+       "gaz",
+       "genepio",
+       "iao",
+       "ncbitaxon",
+       "pato",
+       "taxrank"
+      ],
+      "model": [
+       "bco",
+       "envo",
+       "genepio",
+       "iao",
+       "ncbitaxon",
+       "obi",
+       "pco",
+       "taxrank",
+       "uo"
+      ],
+      "agree": [
+       "bco",
+       "envo",
+       "genepio",
+       "iao",
+       "ncbitaxon",
+       "taxrank"
+      ],
+      "planner_only": [
+       "gaz",
+       "pato"
+      ],
+      "model_only": [
+       "obi",
+       "pco",
+       "uo"
+      ]
+     },
+     "consensus_all_recall": 0.0,
+     "consensus_majority_recall": 0.05263157894736842
+    },
+    "DP1.10022.001.bet_fielddata": {
+     "n_proposals": [
+      1,
+      1
+     ],
+     "rep_agreement": 0.0,
+     "planner_fallback": false,
+     "audit": {
+      "planner": [
+       "bco",
+       "envo",
+       "gaz",
+       "genepio",
+       "iao",
+       "ncbitaxon",
+       "obi",
+       "pato",
+       "uo"
+      ],
+      "model": [
+       "bco",
+       "envo",
+       "genepio",
+       "iao",
+       "ncbitaxon",
+       "obi",
+       "pco",
+       "ro",
+       "taxrank",
+       "uo"
+      ],
+      "agree": [
+       "bco",
+       "envo",
+       "genepio",
+       "iao",
+       "ncbitaxon",
+       "obi",
+       "uo"
+      ],
+      "planner_only": [
+       "gaz",
+       "pato"
+      ],
+      "model_only": [
+       "pco",
+       "ro",
+       "taxrank"
+      ]
+     },
+     "consensus_all_recall": 0.0,
+     "consensus_majority_recall": 0.0
+    },
+    "DP1.10022.001.bet_parataxonomistID": {
+     "n_proposals": [
+      4,
+      5
+     ],
+     "rep_agreement": 0.5,
+     "planner_fallback": false,
+     "audit": {
+      "planner": [
+       "bco",
+       "envo",
+       "gaz",
+       "iao",
+       "ncbitaxon",
+       "obi",
+       "pato",
+       "taxrank",
+       "uo"
+      ],
+      "model": [
+       "bco",
+       "envo",
+       "gaz",
+       "genepio",
+       "iao",
+       "ncbitaxon",
+       "obi",
+       "pato",
+       "pco",
+       "taxrank",
+       "uo"
+      ],
+      "agree": [
+       "bco",
+       "envo",
+       "gaz",
+       "iao",
+       "ncbitaxon",
+       "obi",
+       "pato",
+       "taxrank",
+       "uo"
+      ],
+      "planner_only": [],
+      "model_only": [
+       "genepio",
+       "pco"
+      ]
+     },
+     "consensus_all_recall": 0.0,
+     "consensus_majority_recall": 0.07142857142857142
+    },
+    "DP1.10022.001.bet_sorting": {
+     "n_proposals": [
+      2,
+      2
+     ],
+     "rep_agreement": 0.3333333333333333,
+     "planner_fallback": false,
+     "audit": {
+      "planner": [
+       "bco",
+       "envo",
+       "gaz",
+       "genepio",
+       "iao",
+       "ncbitaxon",
+       "obi",
+       "taxrank"
+      ],
+      "model": [
+       "bco",
+       "envo",
+       "gaz",
+       "genepio",
+       "iao",
+       "ncbitaxon",
+       "obi",
+       "pco",
+       "ro",
+       "taxrank"
+      ],
+      "agree": [
+       "bco",
+       "envo",
+       "gaz",
+       "genepio",
+       "iao",
+       "ncbitaxon",
+       "obi",
+       "taxrank"
+      ],
+      "planner_only": [],
+      "model_only": [
+       "pco",
+       "ro"
+      ]
+     },
+     "consensus_all_recall": 0.0,
+     "consensus_majority_recall": 0.08333333333333333
+    }
+   },
+   "rep_agreement_mean": 0.18027210884353742,
+   "consensus_all_recall_mean": 0.047619047619047616,
+   "consensus_majority_recall_mean": 0.05160566250791815
+  }
+ }
+}

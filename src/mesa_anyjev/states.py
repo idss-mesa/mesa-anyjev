@@ -151,3 +151,22 @@ def avu_state(
             for s in siblings[:MAX_SIBLINGS]
         ],
     }
+
+
+def dataset_ontology_state(card: DatasetCard, ontology_option: str) -> dict[str, Any]:
+    """``dataset.ontology_applies``: the card header and one registry entry (M5 planner audit)."""
+    return {"card": card_header(card), "ontology": ontology_option}
+
+
+def datacite_state(
+    card: DatasetCard | None, vocabulary: str, text: str, value: str | None = None
+) -> dict[str, Any]:
+    """DataCite questions: the (optional) card header, the vocabulary name, the text being
+    classified (a description, a contributor line, a related identifier, a date) and, for the
+    yes/no twins, the candidate value."""
+    state: dict[str, Any] = {"vocabulary": vocabulary, "text": str(text)[: MAX_DESCRIPTION * 4]}
+    if card is not None:
+        state["card"] = card_header(card)
+    if value is not None:
+        state["value"] = value
+    return state

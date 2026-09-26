@@ -72,6 +72,78 @@ questions:
     min_level: L1
     min_weight: 0.6
     cite: "D6 bootstrap"
+  dataset.ontology_applies:      # M5 planner audit; recorded, never writes
+    stat: p_true
+    auto: null
+    propose: 0.50
+    margin: 0.10
+    min_level: L1
+    min_weight: 0.6
+    cite: "D6 bootstrap"
+  datacite.resource_type_fits:   # 28 members > 26: one yes/no per member
+    stat: p_true
+    auto: null
+    propose: 0.50
+    margin: 0.15
+    min_level: L1
+    min_weight: 0.6
+    cite: "D6 bootstrap"
+  datacite.contributor_type:
+    stat: confidence
+    auto: null
+    propose: 0.40
+    margin: 0.10
+    min_level: L1
+    min_weight: 0.6
+    cite: "D6 bootstrap"
+  datacite.contributor_type_fits:
+    stat: p_true
+    auto: null
+    propose: 0.50
+    margin: 0.15
+    min_level: L1
+    min_weight: 0.6
+    cite: "D6 bootstrap"
+  datacite.relation_type:
+    stat: confidence
+    auto: null
+    propose: 0.40
+    margin: 0.10
+    min_level: L1
+    min_weight: 0.6
+    cite: "D6 bootstrap"
+  datacite.relation_type_fits:
+    stat: p_true
+    auto: null
+    propose: 0.50
+    margin: 0.15
+    min_level: L1
+    min_weight: 0.6
+    cite: "D6 bootstrap"
+  datacite.date_type:
+    stat: confidence
+    auto: null
+    propose: 0.40
+    margin: 0.10
+    min_level: L1
+    min_weight: 0.6
+    cite: "D6 bootstrap"
+  datacite.date_type_fits:
+    stat: p_true
+    auto: null
+    propose: 0.50
+    margin: 0.15
+    min_level: L1
+    min_weight: 0.6
+    cite: "D6 bootstrap"
+  datacite.description_type:
+    stat: confidence
+    auto: null
+    propose: 0.40
+    margin: 0.10
+    min_level: L1
+    min_weight: 0.6
+    cite: "D6 bootstrap"
 profiles:
   prod:
     min_level_write: L1
