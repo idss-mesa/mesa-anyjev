@@ -76,3 +76,10 @@ code over mesa_mcp) · `policy.py` (outcomes) · `pipeline.py` (annotate) · `ap
 Agents commit on `feat/`, `fix/`, `docs/` branches with Conventional Commits and open PRs;
 never amend shared branches. `CHANGELOG.md` (Keep a Changelog) for the package, `docs/log.md`
 for the docs.
+
+## Merging
+
+Wait for a PR's checks with `scripts/wait_for_checks.sh <pr-number|branch>` before
+`gh pr merge`. It refuses to settle until checks exist (at least three), none is pending,
+the set is stable across two polls and none failed; an empty check list means CI has not
+started, never that it passed. Do not replace it with an ad hoc `until ... grep pending` loop.
