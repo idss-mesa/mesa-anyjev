@@ -63,12 +63,25 @@ def doctor(cfg: Config, *, backend_kind: str | None = None) -> HealthReport:
     return rep
 
 
+def _load_motherduck() -> str:
+    """``INSTALL``/``LOAD motherduck`` in a throwaway connection; the duckdb version on success.
+
+    Raises whatever DuckDB raises (on 2.0.0 the extension refuses to initialise)."""
+    import duckdb
+
+    con = duckdb.connect()
+    try:
+        con.execute("INSTALL motherduck")
+        con.execute("LOAD motherduck")
+    finally:
+        con.close()
+    return str(duckdb.__version__)
+
+
 def _motherduck_checks(cfg: Config, rep: HealthReport) -> None:
     """Hosted Jev: the extension loads, the token is present (name only), ``md:`` attaches,
     a two-option fixture answers, and the observed STRUCT is the one the parser pins."""
     import os
-
-    import duckdb
 
     from mesa_anyjev.providers.motherduck_provider import (
         RESULT_KEYS,
@@ -78,11 +91,7 @@ def _motherduck_checks(cfg: Config, rep: HealthReport) -> None:
     from mesa_anyjev.questions import Q_TERM_FITS_CHOOSER
 
     try:
-        con = duckdb.connect()
-        con.execute("INSTALL motherduck")
-        con.execute("LOAD motherduck")
-        con.close()
-        rep.add("motherduck extension", True, f"duckdb {duckdb.__version__}")
+        rep.add("motherduck extension", True, f"duckdb {_load_motherduck()}")
     except Exception as exc:
         rep.add("motherduck extension", False, f"{type(exc).__name__}: {str(exc)[:160]}")
         return

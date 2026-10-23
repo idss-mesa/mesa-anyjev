@@ -9,6 +9,20 @@ All notable changes to the mesa-anyjev package. The format follows
 
 ### Changed
 
+- DuckDB 2.0: `duckdb>=2.0,<3` (was `>=1.1`); mesa-mcp pinned to `0e2e561` (0.2.0) and
+  mesa-ducklake to `00a2ee8` (0.2.0), their DuckDB 2.0 releases.
+- `DuckDBStore` runs every statement on its own cursor. DuckDB 2.0 raises
+  `ResourceInUseException` when two threads use one connection, and MCP tool calls read the
+  store from worker threads outside the decider lock.
+- The doctor's MotherDuck extension load is `health._load_motherduck`, which the doctor test
+  stubs, so the unit suite no longer installs the extension from the network.
+
+### Known issue
+
+- The MotherDuck extension does not load on DuckDB 2.0.0 yet ("Your DuckDB version (v2.0.0) is
+  not yet supported"), so `hosted score` and the doctor's `motherduck extension` check fail until
+  MotherDuck ships 2.0 support. Nothing else depends on it; hosted providers are off by default.
+
 - mesa-mcp pin bumped to c74f3aa (PR #5: `record_avu_change(s)` return the Snapshot).
 
 ## [0.1.0] - 2026-09-25

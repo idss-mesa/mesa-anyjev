@@ -299,7 +299,18 @@ def test_doctor_motherduck_checks(monkeypatch: pytest.MonkeyPatch) -> None:
     from mesa_anyjev.providers import motherduck_provider as mp
 
     cfg = load_config(env={"MESA_ANYJEV_POLICY__HOSTED_PROVIDERS": "allowlist"})
+
+    # 0. the extension refuses to load (DuckDB 2.0.0 today): the report stops there
+    def _refuse() -> str:
+        raise RuntimeError("Your DuckDB version (v2.0.0) is not yet supported")
+
+    monkeypatch.setattr(health, "_load_motherduck", _refuse)
+    rep = health.doctor(cfg)
+    ext = next(c for c in rep.checks if c.name == "motherduck extension")
+    assert not ext.ok and "not yet supported" in ext.detail
+    assert "motherduck token" not in [c.name for c in rep.checks]
     # 1. no token: the extension check passes and the report stops at the token
+    monkeypatch.setattr(health, "_load_motherduck", lambda: "2.0.0")
     monkeypatch.delenv("MOTHERDUCK_TOKEN", raising=False)
     rep = health.doctor(cfg)
     names = [c.name for c in rep.checks]

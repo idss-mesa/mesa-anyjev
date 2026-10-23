@@ -23,6 +23,11 @@ status: draft
 
 # Hosted providers
 
+**Unavailable on DuckDB 2.0 for now.** The MotherDuck extension does not load on DuckDB 2.0.0
+yet ("Your DuckDB version (v2.0.0) is not yet supported"), and mesa-anyjev requires DuckDB 2.x
+since the mesa-ducklake 0.2.0 pin. `hosted score` fails until MotherDuck supports 2.0
+(RESEARCH.md, M4b).
+
 MotherDuck's `prompt_jev` SQL function answers the same three primitives (choice, score,
 yes/no) and returns a choice, a full probability distribution and a confidence (DESIGN D16).
 mesa-anyjev asks it the identical questions: the frozen question text is the instruction,

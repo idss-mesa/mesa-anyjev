@@ -261,5 +261,11 @@ Every fact names where it was verified. Re-check anything marked `stale_after`.
   STRUCT) is coded and doctor-checked but not yet exercised; every hosted test runs on a
   local stand-in runner. The first real run is `MOTHERDUCK_TOKEN=... hosted score --dry-run`
   then without `--dry-run` on the 285 term.fits states (about 72 KB of input text).
+- 2026-10-23: on duckdb 2.0.0 (this venv, linux_arm64) `INSTALL motherduck` succeeds but
+  `LOAD motherduck` fails: `motherduck_duckdb_cpp_init` throws "Your DuckDB version (v2.0.0) is
+  not yet supported". The hosted path is unavailable on 2.0 until MotherDuck supports it.
+- 2026-10-23: DuckDB 2.0.0 raises `ResourceInUseException` when two threads use one connection
+  at once (4 threads x 200 reads of one connection: 21 errors; 0 with a lock or with a cursor
+  per statement); sequential use with an earlier result still open is fine.
 - MotherDuck can attach `ducklake:` catalogs (managed DuckLake in preview). The `motherduck`
   DuckDB extension is not installed in `~/.mesa/.venv`'s duckdb 1.5.5 today.
