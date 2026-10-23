@@ -1,5 +1,9 @@
 # Directory Update Log
 
+## 2026-10-23
+
+* **Update**: [Hosted providers](concepts/hosted-providers.md) warns that the MotherDuck extension does not load on DuckDB 2.0.0, which mesa-anyjev now requires.
+
 ## 2026-09-25
 
 * **Creation**: [Second opinions](concepts/second-opinions.md) and [DataCite decisions](concepts/datacite.md) for milestone M5.

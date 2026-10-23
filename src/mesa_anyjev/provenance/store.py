@@ -168,13 +168,29 @@ class DuckDBStore:
         # A DuckDB file has one writer; readers may share it only when no writer holds it.
         self._con = duckdb.connect(str(self.path), read_only=read_only)
 
+    def _run(
+        self, sql: str, params: Sequence[Any] = (), *, many: bool = False
+    ) -> tuple[list[str], list[tuple[Any, ...]]]:
+        """Run one statement on its own cursor and drain it: ``(column names, rows)``.
+
+        DuckDB 2.0 raises ``ResourceInUseException`` when two threads use one connection at
+        once, and MCP tool calls read the store from worker threads outside the decider lock.
+        """
+        with self._con.cursor() as cur:
+            if many:
+                cur.executemany(sql, list(params))
+                return [], []
+            cur.execute(sql, list(params))
+            names = [d[0] for d in cur.description or []]
+            return names, cur.fetchall()
+
     # -- schema ------------------------------------------------------------------------------
     def ensure_schema(self) -> int:
         if self.read_only:
             return SCHEMA_VERSION
         for stmt in DUCKDB_DDL:
-            self._con.execute(stmt)
-        self._con.execute(
+            self._run(stmt)
+        self._run(
             "INSERT INTO mesa_anyjev.schema_versions (version) SELECT ? WHERE NOT EXISTS "
             "(SELECT 1 FROM mesa_anyjev.schema_versions WHERE version = ?)",
             [SCHEMA_VERSION, SCHEMA_VERSION],
@@ -182,11 +198,11 @@ class DuckDBStore:
         return SCHEMA_VERSION
 
     def columns(self, table: str) -> list[tuple[str, bool]]:
-        rows = self._con.execute(
+        _, rows = self._run(
             "SELECT column_name, is_nullable FROM information_schema.columns "
             "WHERE table_schema = 'mesa_anyjev' AND table_name = ? ORDER BY ordinal_position",
             [table],
-        ).fetchall()
+        )
         return [(str(name), str(nullable).upper() == "YES") for name, nullable in rows]
 
     # -- writes -------------------------------------------------------------------------------
@@ -196,7 +212,7 @@ class DuckDBStore:
         cols, _ = _row_values(rows[0])
         placeholders = ", ".join("?" for _ in cols)
         sql = f"INSERT INTO mesa_anyjev.{table} ({', '.join(cols)}) VALUES ({placeholders})"  # noqa: S608
-        self._con.executemany(sql, [_row_values(r)[1] for r in rows])
+        self._run(sql, [_row_values(r)[1] for r in rows], many=True)
         return len(rows)
 
     def begin_run(self, run: RunRow) -> UUID:
@@ -225,7 +241,7 @@ class DuckDBStore:
             sets.append(f"{key} = ?")
             values.append(_cell(value))
         values.append(str(run_id))
-        self._con.execute(f"UPDATE mesa_anyjev.runs SET {', '.join(sets)} WHERE run_id = ?", values)  # noqa: S608
+        self._run(f"UPDATE mesa_anyjev.runs SET {', '.join(sets)} WHERE run_id = ?", values)  # noqa: S608
 
     def insert_decisions(
         self, rows: Sequence[DecisionRow], options: Sequence[DecisionOptionRow] = ()
@@ -258,7 +274,7 @@ class DuckDBStore:
         if not sets:
             return
         values.append(str(group_id))
-        self._con.execute(
+        self._run(
             f"UPDATE mesa_anyjev.decision_groups SET {', '.join(sets)} WHERE group_id = ?",  # noqa: S608
             values,
         )
@@ -278,28 +294,29 @@ class DuckDBStore:
         if not ids:
             return 0
         if irods_path is None:
-            self._con.executemany(
+            self._run(
                 "UPDATE mesa_anyjev.avu_links SET write_status = ?, written_at = ? WHERE link_id = ?",
                 [[status, written_at, i] for i in ids],
+                many=True,
             )
         else:
-            self._con.executemany(
+            self._run(
                 "UPDATE mesa_anyjev.avu_links SET write_status = ?, written_at = ?, irods_path = ? "
                 "WHERE link_id = ?",
                 [[status, written_at, irods_path, i] for i in ids],
+                many=True,
             )
         return len(ids)
 
     def link_snapshot(
         self, run_id: UUID, irods_path: str, project_id: UUID | None, snapshot_id: int
     ) -> int:
-        cur = self._con.execute(
+        _, count = self._run(
             "UPDATE mesa_anyjev.avu_links SET snapshot_id = ?, project_id = ? "
             "WHERE run_id = ? AND irods_path = ? AND write_status = 'written' AND snapshot_id IS NULL",
             [snapshot_id, _cell(project_id), str(run_id), irods_path],
         )
-        count = cur.fetchone()
-        return int(count[0]) if count else 0
+        return int(count[0][0]) if count else 0
 
     def insert_override(self, row: HumanOverrideRow) -> UUID:
         self._insert("human_overrides", [row])
@@ -310,20 +327,18 @@ class DuckDBStore:
         for row in rows:
             cols, values = _row_values(row)
             placeholders = ", ".join("?" for _ in cols)
-            cur = self._con.execute(
+            _, got = self._run(
                 f"INSERT OR IGNORE INTO mesa_anyjev.labels ({', '.join(cols)}) VALUES ({placeholders})",  # noqa: S608
                 values,
             )
-            got = cur.fetchone()
-            inserted += int(got[0]) if got else 0
+            inserted += int(got[0][0]) if got else 0
         return inserted
 
     # -- reads ----------------------------------------------------------------------------------
     def _select(self, sql: str, params: Sequence[Any] = ()) -> list[dict[str, Any]]:
-        cur = self._con.execute(sql, list(params))
-        names = [d[0] for d in cur.description or []]
+        names, rows = self._run(sql, params)
         out = []
-        for values in cur.fetchall():
+        for values in rows:
             row = dict(zip(names, values, strict=True))
             for key in ("plan_json", "state_json", "probs", "search_json", "offered"):
                 if key in row and isinstance(row[key], str):

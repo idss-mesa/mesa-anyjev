@@ -41,6 +41,9 @@ this repo was designed against is commit `795a4970b47218b7c0686cd579d691fc2cf8df
 and mesa-ducklake are not on PyPI; the live mains at design time were `8fbaedf850301146b38b997774ab7aed1d0cb179`
 and `7bc143fefb093f0a2ace748a7036598147533ca0`. The checkouts under `~/github/idss-mesa/` were
 behind those mains (RESEARCH.md), so pins point at GitHub, not at sibling paths.
+*(2026-10-23.)* The pins moved to the DuckDB 2.0 releases: mesa-mcp
+`0e2e561b023abb896d148a8b85d3ba6b4f386d2e` and mesa-ducklake
+`00a2ee84b71179ce748d3263c0fcb9b2b9418dbc` (both 0.2.0; mesa-ducklake requires `duckdb>=2.0,<3`).
 
 ## D1. Fixed-key questions
 

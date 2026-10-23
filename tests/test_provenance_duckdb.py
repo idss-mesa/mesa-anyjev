@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import threading
 from datetime import UTC, datetime
 from pathlib import Path
 from uuid import uuid4
@@ -199,6 +200,29 @@ def test_finish_run_rejects_unknown_columns(duckdb_store: DuckDBStore) -> None:
     duckdb_store.begin_run(run)
     with pytest.raises(ValueError):
         duckdb_store.finish_run(run.run_id, "failed", status_reason="x")
+
+
+def test_store_is_safe_across_threads(duckdb_store: DuckDBStore) -> None:
+    # DuckDB 2.0 raises ResourceInUseException when threads share one connection; MCP tool
+    # calls read the store from worker threads, so each statement runs on its own cursor.
+    run = _run()
+    duckdb_store.begin_run(run)
+    errors: list[BaseException] = []
+
+    def work() -> None:
+        try:
+            for _ in range(50):
+                assert duckdb_store.run(run.run_id) is not None
+                duckdb_store.decisions(run.run_id)
+        except BaseException as exc:
+            errors.append(exc)
+
+    threads = [threading.Thread(target=work) for _ in range(4)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    assert not errors, errors
 
 
 def test_open_store_and_migrate_duckdb(tmp_path: Path) -> None:
